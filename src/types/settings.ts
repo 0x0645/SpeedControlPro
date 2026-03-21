@@ -15,6 +15,11 @@ export interface SiteProfile {
   keyBindings?: KeyBinding[] | null;
 }
 
+export interface ResolvedSiteProfile extends SiteProfile {
+  audioBoolean: boolean;
+  keyBindings: KeyBinding[];
+}
+
 export interface ExtensionSettings {
   lastSpeed: number;
   enabled: boolean;
@@ -56,7 +61,7 @@ export interface IVideoSpeedConfig {
   setKeyBinding(action: string, value: unknown): void;
   getEffectiveSetting(key: string, hostname: string): unknown;
   getSiteProfile(hostname: string): SiteProfile | null;
-  getResolvedProfile(hostname: string): SiteProfile & { audioBoolean: boolean; keyBindings: KeyBinding[] };
+  getResolvedProfile(hostname: string): ResolvedSiteProfile;
   setSiteProfile(hostname: string, profileData: Partial<SiteProfile>): Promise<void>;
   removeSiteProfile(hostname: string): Promise<void>;
 }
@@ -67,7 +72,11 @@ export interface IActionHandler {
   eventManager: IEventManager | null;
   runAction(action: string, value: unknown, e?: Event | null): void;
   executeAction(action: string, value: unknown, video: VscMedia, e?: Event | null): void;
-  adjustSpeed(video: VscMedia, value: number, options?: { relative?: boolean; source?: string }): void;
+  adjustSpeed(
+    video: VscMedia,
+    value: number,
+    options?: { relative?: boolean; source?: string }
+  ): void;
   resetSpeed(video: VscMedia, target: number): void;
   showControllerForMedia(video: VscMedia): void;
 }

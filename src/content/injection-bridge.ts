@@ -4,8 +4,30 @@ import {
   EXTENSION_MESSAGES,
   MESSAGE_TYPES,
 } from '../utils/message-types';
+import type { RuntimeMessage } from '../types/contracts';
 
 let bridgeInitialized = false;
+
+type BridgeRuntimeRequest = RuntimeMessage | { action: 'get-status' };
+
+function isRuntimeMessage(payload: unknown): payload is RuntimeMessage {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'type' in payload &&
+    typeof (payload as { type?: unknown }).type === 'string' &&
+    (payload as { type: string }).type.startsWith('VSC_')
+  );
+}
+
+function isBridgeStatusRequest(payload: unknown): payload is { action: 'get-status' } {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'action' in payload &&
+    (payload as { action?: unknown }).action === 'get-status'
+  );
+}
 
 export function __resetBridgeForTests(): void {
   bridgeInitialized = false;
@@ -94,17 +116,14 @@ export function setupMessageBridge(): void {
     if (source === BRIDGE_SOURCES.PAGE) {
       if (action === BRIDGE_ACTIONS.STORAGE_UPDATE) {
         const update = data as Record<string, unknown>;
-        if (
-          typeof update.lastSpeed === 'number' &&
-          Number.isFinite(update.lastSpeed)
-        ) {
+        if (typeof update.lastSpeed === 'number' && Number.isFinite(update.lastSpeed)) {
           chrome.runtime.sendMessage({
             type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
             lastSpeed: update.lastSpeed,
           });
         }
         chrome.storage.sync.set(update);
-      } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE) {
+      } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE && isRuntimeMessage(data)) {
         if (data.type !== MESSAGE_TYPES.STATE_UPDATE) {
           chrome.runtime.sendMessage(data);
         }
@@ -117,19 +136,19 @@ export function setupMessageBridge(): void {
   });
 
   chrome.runtime.onMessage.addListener(
-    (request: Record<string, unknown>, _sender: unknown, sendResponse: (payload: unknown) => void) => {
+    (request: BridgeRuntimeRequest, _sender: unknown, sendResponse: (payload: unknown) => void) => {
       window.dispatchEvent(
         new CustomEvent('VSC_MESSAGE', {
           detail: request,
         })
       );
 
-      if (request.type === MESSAGE_TYPES.GET_SITE_INFO) {
+      if (isRuntimeMessage(request) && request.type === MESSAGE_TYPES.GET_SITE_INFO) {
         waitForPageResponse(BRIDGE_ACTIONS.CURRENT_SPEED_RESPONSE, sendResponse);
         return true;
       }
 
-      if (request.action === 'get-status') {
+      if (isBridgeStatusRequest(request)) {
         waitForPageResponse(BRIDGE_ACTIONS.STATUS_RESPONSE, sendResponse);
         return true;
       }

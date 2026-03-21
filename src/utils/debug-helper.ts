@@ -119,11 +119,13 @@ export class DebugHelper {
   testPopupCommunication(): void {
     console.group('Popup Communication Test');
     const videos = document.querySelectorAll('video, audio');
-    if (window.VSC_controller && window.VSC_controller.actionHandler) {
+    const controller = window.VSC_controller;
+    const actionHandler = controller?.actionHandler;
+    if (actionHandler) {
       const testSpeed = 1.5;
       videos.forEach((video: any) => {
         if (video.vsc) {
-          window.VSC_controller.actionHandler.adjustSpeed(video, testSpeed);
+          actionHandler.adjustSpeed(video, testSpeed);
         } else {
           video.playbackRate = testSpeed;
         }

@@ -1,49 +1,52 @@
 import { BRIDGE_ACTIONS, BRIDGE_SOURCES } from '../utils/message-types';
-import { buildStorageChanges, normalizeKeys, notifyCallbacks } from './storage-helpers';
+import { normalizeKeys } from './storage-helpers';
+import {
+  clearChromeStorage,
+  getFromChromeStorage,
+  hasChromeStorage,
+  removeFromChromeStorage,
+  setInChromeStorage,
+  subscribeToChromeStorage,
+} from './chrome-storage-adapter';
+import {
+  getCachedSettings,
+  loadSettingsFromDom,
+  mergeCachedSettings,
+  removeCachedKeys,
+  resetPageStorageCache,
+  setCachedSettings,
+  subscribeToPageStorage,
+} from './storage-page-cache';
 import { logger } from '../utils/logger';
 import type { ExtensionSettings } from '../types/settings';
 import type { StorageChangeMap, StorageSnapshot } from '../types/contracts';
 
 export class StorageManager {
   static errorCallback: ((error: Error, context: unknown) => void) | null = null;
-  static _pageStorageListenerAttached = false;
-  static _pageStorageCallbacks: Array<(changes: StorageChangeMap) => void> = [];
 
   static __resetForTests() {
     this.errorCallback = null;
-    this._pageStorageListenerAttached = false;
-    this._pageStorageCallbacks = [];
-    window.VSC_settings = null;
+    resetPageStorageCache();
   }
 
   static hasChromeStorage() {
-    const runtimeChrome = globalThis.chrome;
-    return (
-      typeof runtimeChrome !== 'undefined' && runtimeChrome.storage && runtimeChrome.storage.sync
-    );
+    return hasChromeStorage();
   }
 
   static getCachedSettings(): StorageSnapshot | null {
-    return window.VSC_settings || null;
+    return getCachedSettings();
   }
 
   static setCachedSettings(settings: StorageSnapshot) {
-    window.VSC_settings = settings;
-    return window.VSC_settings;
+    return setCachedSettings(settings);
   }
 
   static mergeCachedSettings(data: StorageSnapshot = {}) {
-    this.setCachedSettings({ ...(this.getCachedSettings() || {}), ...data });
-    return this.getCachedSettings();
+    return mergeCachedSettings(data);
   }
 
   static removeCachedKeys(keys: string | string[]) {
-    const cache = this.getCachedSettings();
-    if (!cache) {
-      return;
-    }
-
-    normalizeKeys(keys).forEach((key) => delete cache[key]);
+    removeCachedKeys(normalizeKeys(keys));
   }
 
   static postToContent(action: string, data: unknown) {
@@ -69,23 +72,7 @@ export class StorageManager {
   }
 
   static loadSettingsFromDom(): StorageSnapshot | null {
-    const settingsElement = document.getElementById('vsc-settings-data');
-
-    if (!settingsElement || !settingsElement.textContent) {
-      return null;
-    }
-
-    try {
-      const parsedSettings = JSON.parse(settingsElement.textContent) as StorageSnapshot;
-      this.setCachedSettings(parsedSettings);
-      logger.debug('Loaded settings from script element');
-      settingsElement.remove();
-      return parsedSettings;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error(`Failed to parse settings from script element: ${message}`);
-      return null;
-    }
+    return loadSettingsFromDom();
   }
 
   static onError(callback: (error: Error, context: unknown) => void) {
@@ -94,12 +81,7 @@ export class StorageManager {
 
   static async get(defaults: Partial<ExtensionSettings> = {}): Promise<StorageSnapshot> {
     if (this.hasChromeStorage()) {
-      return new Promise((resolve) => {
-        globalThis.chrome.storage.sync.get(defaults, (storage: StorageSnapshot) => {
-          logger.debug('Retrieved settings from chrome.storage');
-          resolve(storage);
-        });
-      });
+      return getFromChromeStorage(defaults);
     }
 
     if (!this.getCachedSettings()) {
@@ -117,15 +99,8 @@ export class StorageManager {
 
   static async set(data: StorageSnapshot): Promise<void> {
     if (this.hasChromeStorage()) {
-      return new Promise((resolve, reject) => {
-        globalThis.chrome.storage.sync.set(data, () => {
-          if (globalThis.chrome.runtime.lastError) {
-            reject(this.reportStorageError('save', globalThis.chrome.runtime.lastError, data));
-            return;
-          }
-          logger.debug('Settings saved to chrome.storage');
-          resolve();
-        });
+      return setInChromeStorage(data).catch((error: Error) => {
+        throw this.reportStorageError('save', error, data);
       });
     }
 
@@ -139,18 +114,9 @@ export class StorageManager {
     const normalizedKeys = normalizeKeys(keys);
 
     if (this.hasChromeStorage()) {
-      return new Promise((resolve, reject) => {
-        globalThis.chrome.storage.sync.remove(normalizedKeys, () => {
-          if (globalThis.chrome.runtime.lastError) {
-            reject(
-              this.reportStorageError('remove', globalThis.chrome.runtime.lastError, {
-                removedKeys: normalizedKeys,
-              })
-            );
-            return;
-          }
-          logger.debug('Keys removed from storage');
-          resolve();
+      return removeFromChromeStorage(normalizedKeys).catch((error: Error) => {
+        throw this.reportStorageError('remove', error, {
+          removedKeys: normalizedKeys,
         });
       });
     }
@@ -161,18 +127,9 @@ export class StorageManager {
 
   static async clear(): Promise<void> {
     if (this.hasChromeStorage()) {
-      return new Promise((resolve, reject) => {
-        globalThis.chrome.storage.sync.clear(() => {
-          if (globalThis.chrome.runtime.lastError) {
-            reject(
-              this.reportStorageError('clear', globalThis.chrome.runtime.lastError, {
-                operation: 'clear',
-              })
-            );
-            return;
-          }
-          logger.debug('Storage cleared');
-          resolve();
+      return clearChromeStorage().catch((error: Error) => {
+        throw this.reportStorageError('clear', error, {
+          operation: 'clear',
         });
       });
     }
@@ -183,37 +140,10 @@ export class StorageManager {
 
   static onChanged(callback: (changes: StorageChangeMap) => void) {
     if (this.hasChromeStorage() && globalThis.chrome.storage.onChanged) {
-      globalThis.chrome.storage.onChanged.addListener(
-        (changes: StorageChangeMap, areaName: string) => {
-          if (areaName === 'sync') {
-            callback(changes);
-          }
-        }
-      );
+      subscribeToChromeStorage(callback);
       return;
     }
 
-    this._pageStorageCallbacks.push(callback);
-
-    if (this._pageStorageListenerAttached) {
-      return;
-    }
-
-    this._pageStorageListenerAttached = true;
-
-    window.addEventListener('message', (event) => {
-      if (
-        event.data?.source === BRIDGE_SOURCES.CONTENT &&
-        event.data?.action === BRIDGE_ACTIONS.STORAGE_CHANGED
-      ) {
-        const previousSettings = this.getCachedSettings() || {};
-        const changes = buildStorageChanges(
-          event.data.data,
-          previousSettings as Record<string, unknown>
-        );
-        this.mergeCachedSettings(event.data.data as StorageSnapshot);
-        notifyCallbacks(this._pageStorageCallbacks, changes);
-      }
-    });
+    subscribeToPageStorage(callback);
   }
 }

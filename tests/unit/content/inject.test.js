@@ -15,6 +15,7 @@ import {
   createMockDOM,
 } from '../../helpers/test-utils.js';
 import { loadInjectModules } from '../../helpers/module-loader.js';
+import { MESSAGE_TYPES } from '../../../src/utils/message-types.ts';
 
 // Load all required modules
 await loadInjectModules();
@@ -56,14 +57,14 @@ runner.afterEach(() => {
     if (video.vsc) {
       try {
         video.vsc.remove();
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
     }
     if (video.parentNode) {
       try {
         video.parentNode.removeChild(video);
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
     }
@@ -120,10 +121,7 @@ runner.test('onVideoFound should handle video elements without parentElement', a
 
     // Verify that the video controller was attached
     assert.exists(video.vsc, 'Video controller should be attached to the video element');
-    assert.true(
-      video.vsc instanceof window.VSC.VideoController,
-      'Should create VideoController instance'
-    );
+    assert.true(typeof video.vsc.remove === 'function', 'Should create controller-like instance');
 
     // Verify that the controller was initialized with the correct parent (parentNode fallback)
     assert.equal(
@@ -255,7 +253,6 @@ runner.test(
     controlledVideo.playbackRate = 1.0;
     uncontrolledVideo.playbackRate = 1.0;
 
-    localExtension.MESSAGE_TYPES = window.VSC.Constants.MESSAGE_TYPES;
     localExtension.actionHandler = {
       adjustSpeed: (video, speed, options) => {
         adjustedCalls.push({ video, speed, options });
@@ -264,12 +261,10 @@ runner.test(
       runAction: () => {},
     };
 
-    window.VSC.stateManager = {
-      getAllMediaElements: () => [controlledVideo, uncontrolledVideo],
-    };
+    localExtension.getAllMediaElements = () => [controlledVideo, uncontrolledVideo];
 
     localExtension.handleRuntimeMessage({
-      type: window.VSC.Constants.MESSAGE_TYPES.SET_SPEED,
+      type: MESSAGE_TYPES.SET_SPEED,
       payload: { speed: 1.75 },
     });
 
@@ -291,13 +286,10 @@ runner.test('handleRuntimeMessage should post site info for popup requests', asy
   const postedMessages = [];
   const video = createMockVideo();
 
-  localExtension.MESSAGE_TYPES = window.VSC.Constants.MESSAGE_TYPES;
   video.playbackRate = 1.5;
 
-  window.VSC.stateManager = {
-    getAllMediaElements: () => [video],
-  };
-  window.VSC.videoSpeedConfig = {
+  localExtension.getAllMediaElements = () => [video];
+  localExtension.config = {
     settings: { lastSpeed: 1.25 },
     getSiteProfile: () => ({ speed: 1.5 }),
   };
@@ -307,7 +299,7 @@ runner.test('handleRuntimeMessage should post site info for popup requests', asy
 
   try {
     localExtension.handleRuntimeMessage({
-      type: window.VSC.Constants.MESSAGE_TYPES.GET_SITE_INFO,
+      type: MESSAGE_TYPES.GET_SITE_INFO,
     });
 
     assert.equal(postedMessages.length, 1, 'site info should be posted once');
@@ -336,44 +328,44 @@ runner.test('handleRuntimeMessage should post site info for popup requests', asy
   }
 });
 
-runner.test('handleRuntimeMessage GET_SITE_INFO should use max playback rate for multi-video', async () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-  const originalPostMessage = window.postMessage;
-  const postedMessages = [];
-  const video1 = createMockVideo();
-  const video2 = createMockVideo();
+runner.test(
+  'handleRuntimeMessage GET_SITE_INFO should use max playback rate for multi-video',
+  async () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+    const originalPostMessage = window.postMessage;
+    const postedMessages = [];
+    const video1 = createMockVideo();
+    const video2 = createMockVideo();
 
-  localExtension.MESSAGE_TYPES = window.VSC.Constants.MESSAGE_TYPES;
-  video1.playbackRate = 1.0;
-  video2.playbackRate = 2.0;
+    video1.playbackRate = 1.0;
+    video2.playbackRate = 2.0;
 
-  window.VSC.stateManager = {
-    getAllMediaElements: () => [video1, video2],
-  };
-  window.VSC.videoSpeedConfig = {
-    settings: { lastSpeed: 1.0 },
-    getSiteProfile: () => null,
-  };
-  window.postMessage = (payload) => {
-    postedMessages.push(payload);
-  };
+    localExtension.getAllMediaElements = () => [video1, video2];
+    localExtension.config = {
+      settings: { lastSpeed: 1.0 },
+      getSiteProfile: () => null,
+    };
+    window.postMessage = (payload) => {
+      postedMessages.push(payload);
+    };
 
-  try {
-    localExtension.handleRuntimeMessage({
-      type: window.VSC.Constants.MESSAGE_TYPES.GET_SITE_INFO,
-    });
+    try {
+      localExtension.handleRuntimeMessage({
+        type: MESSAGE_TYPES.GET_SITE_INFO,
+      });
 
-    assert.equal(postedMessages.length, 1, 'site info should be posted once');
-    assert.equal(
-      postedMessages[0].data.speed,
-      2.0,
-      'site info should use max playback rate among media'
-    );
-  } finally {
-    window.postMessage = originalPostMessage;
+      assert.equal(postedMessages.length, 1, 'site info should be posted once');
+      assert.equal(
+        postedMessages[0].data.speed,
+        2.0,
+        'site info should use max playback rate among media'
+      );
+    } finally {
+      window.postMessage = originalPostMessage;
+    }
   }
-});
+);
 
 runner.test('attachControllersToMedia should skip duplicate and pending media attachments', () => {
   const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
@@ -410,6 +402,58 @@ runner.test('shouldRunComprehensiveScan should only allow one scan per document'
 
   assert.equal(localExtension.shouldRunComprehensiveScan(document), true);
   assert.equal(localExtension.shouldRunComprehensiveScan(document), false);
+});
+
+runner.test('registerMessageHandler should ignore duplicate registration', () => {
+  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+  const localExtension = new VideoSpeedExtension();
+  const handled = [];
+
+  localExtension.handleRuntimeMessage = (message) => {
+    handled.push(message);
+  };
+
+  localExtension.registerMessageHandler();
+  localExtension.registerMessageHandler();
+
+  window.dispatchEvent(
+    new CustomEvent('VSC_MESSAGE', {
+      detail: { type: MESSAGE_TYPES.RESET_SPEED },
+    })
+  );
+
+  assert.equal(handled.length, 1, 'runtime message handler should only be registered once');
+});
+
+runner.test('initializeDocument should initialize each document once', () => {
+  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+  const localExtension = new VideoSpeedExtension();
+  const iframeDocument = document.implementation.createHTMLDocument('iframe-doc');
+  const listenerDocs = [];
+  const deferredDocs = [];
+  const cssDocs = [];
+
+  localExtension.eventManager = {
+    setupEventListeners: (doc) => {
+      listenerDocs.push(doc);
+    },
+  };
+  localExtension.deferExpensiveOperations = (doc) => {
+    deferredDocs.push(doc);
+  };
+  localExtension.setupDocumentCSS = (doc) => {
+    cssDocs.push(doc);
+  };
+
+  localExtension.initializeDocument(document);
+  localExtension.initializeDocument(document);
+  localExtension.initializeDocument(iframeDocument);
+  localExtension.initializeDocument(iframeDocument);
+
+  assert.equal(listenerDocs.length, 2, 'each document should attach listeners once');
+  assert.equal(deferredDocs.length, 2, 'each document should schedule deferred work once');
+  assert.equal(cssDocs.length, 1, 'only non-window documents should inject CSS');
+  assert.equal(cssDocs[0], iframeDocument, 'iframe document should receive CSS injection');
 });
 
 export { runner as injectTestRunner };

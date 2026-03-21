@@ -12,7 +12,16 @@ function normalizeKeyBindings(keyBindings: unknown): KeyBinding[] {
     return cloneDefaultKeyBindings();
   }
 
-  return keyBindings.map((binding) => ({ ...(binding as KeyBinding) }));
+  return keyBindings.map((binding) => {
+    const normalizedBinding = { ...(binding as KeyBinding) };
+
+    if (normalizedBinding.force !== undefined) {
+      normalizedBinding.force =
+        normalizedBinding.force === true || normalizedBinding.force === 'true';
+    }
+
+    return normalizedBinding;
+  });
 }
 
 function normalizeBoolean(value: unknown, fallback: boolean): boolean {

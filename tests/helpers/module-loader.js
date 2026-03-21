@@ -3,11 +3,55 @@
  * This avoids the need for long import lists in individual test files
  */
 
+import { JSDOM } from 'jsdom';
+
+function ensureDomGlobals() {
+  if (
+    typeof global.window !== 'undefined' &&
+    typeof global.document !== 'undefined' &&
+    typeof global.HTMLElement !== 'undefined'
+  ) {
+    return;
+  }
+
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+    url: 'http://localhost',
+    pretendToBeVisual: true,
+  });
+
+  Object.assign(global, {
+    window: dom.window,
+    document: dom.window.document,
+    navigator: dom.window.navigator,
+    location: dom.window.location,
+    HTMLElement: dom.window.HTMLElement,
+    Element: dom.window.Element,
+    Node: dom.window.Node,
+    Document: dom.window.Document,
+    ShadowRoot: dom.window.ShadowRoot,
+    CustomEvent: dom.window.CustomEvent,
+    Event: dom.window.Event,
+    KeyboardEvent: dom.window.KeyboardEvent,
+    MouseEvent: dom.window.MouseEvent,
+    MutationObserver: dom.window.MutationObserver,
+    HTMLMediaElement: dom.window.HTMLMediaElement,
+    HTMLVideoElement: dom.window.HTMLVideoElement,
+    HTMLAudioElement: dom.window.HTMLAudioElement,
+    customElements: dom.window.customElements,
+    getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+  });
+
+  dom.window.VSC = dom.window.VSC || {};
+  global.__moduleLoaderDom = dom;
+}
+
 /**
  * Load all core modules required for most tests
  * This mimics the global module loading pattern used in the extension
  */
 export async function loadCoreModules() {
+  ensureDomGlobals();
+
   // Core utilities (order matters due to dependencies)
   await import('../../src/utils/constants.ts');
   await import('../../src/utils/logger.ts');

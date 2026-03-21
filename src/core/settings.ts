@@ -6,14 +6,14 @@ import {
 import { logger } from '../utils/logger';
 import { DEFAULT_SETTINGS } from '../utils/constants';
 import { StorageManager } from './storage-manager';
-import type { ExtensionSettings, KeyBinding, SiteProfile } from '../types/settings';
+import type {
+  ExtensionSettings,
+  KeyBinding,
+  ResolvedSiteProfile,
+  SiteProfile,
+} from '../types/settings';
 import type { StorageSnapshot } from '../types/contracts';
 import { normalizeHostname } from '../utils/hostname';
-
-type ResolvedProfile = SiteProfile & {
-  audioBoolean: boolean;
-  keyBindings: KeyBinding[];
-};
 
 export class VideoSpeedConfig {
   settings: ExtensionSettings;
@@ -83,7 +83,10 @@ export class VideoSpeedConfig {
           this.pendingSave = null;
           this.saveTimer = null;
 
-          await StorageManager.set({ ...this.settings, lastSpeed: speedToSave ?? this.settings.lastSpeed } as StorageSnapshot);
+          await StorageManager.set({
+            ...this.settings,
+            lastSpeed: speedToSave ?? this.settings.lastSpeed,
+          } as StorageSnapshot);
           logger.info('Debounced speed setting saved successfully');
         }, this.SAVE_DELAY);
 
@@ -156,7 +159,7 @@ export class VideoSpeedConfig {
     return profiles[normalized] || profiles[hostname] || null;
   }
 
-  getResolvedProfile(hostname: string): ResolvedProfile {
+  getResolvedProfile(hostname: string): ResolvedSiteProfile {
     const profile = this.getSiteProfile(hostname) || {};
     return {
       speed: profile.speed ?? this.settings.lastSpeed,
