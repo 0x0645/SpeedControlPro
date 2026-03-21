@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
+import { BaseSiteHandler } from './base-handler';
 
-class NetflixHandler extends window.VSC.BaseSiteHandler {
+export class NetflixHandler extends BaseSiteHandler {
   static matches(): boolean {
     return location.hostname === 'www.netflix.com';
   }
@@ -23,11 +24,11 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
         'https://www.netflix.com'
       );
 
-      window.VSC.logger.debug(`Netflix seek: ${seekSeconds} seconds`);
+      logger.debug(`Netflix seek: ${seekSeconds} seconds`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Netflix seek failed: ${message}`);
+      logger.error(`Netflix seek failed: ${message}`);
       video.currentTime += seekSeconds;
       return true;
     }
@@ -35,7 +36,7 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
 
   initialize(document: Document): void {
     super.initialize(document);
-    window.VSC.logger.debug(
+    logger.debug(
       'Netflix handler initialized - script injection handled by content script'
     );
   }
@@ -52,5 +53,3 @@ class NetflixHandler extends window.VSC.BaseSiteHandler {
     return ['.watch-video', '.nfp-container', '#netflix-player'];
   }
 }
-
-window.VSC.NetflixHandler = NetflixHandler;

@@ -1,6 +1,6 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
 
-class ControlsManager {
+export class ControlsManager {
   actionHandler: any;
   config: any;
 
@@ -65,7 +65,7 @@ class ControlsManager {
         if (event.deltaMode === event.DOM_DELTA_PIXEL) {
           const TOUCHPAD_THRESHOLD = 50;
           if (Math.abs(event.deltaY) < TOUCHPAD_THRESHOLD) {
-            window.VSC.logger.debug(
+            logger.debug(
               `Touchpad scroll detected (deltaY: ${event.deltaY}) - ignoring`
             );
             return;
@@ -79,7 +79,7 @@ class ControlsManager {
         const speedDelta = delta < 0 ? step : -step;
         this.actionHandler.adjustSpeed(video, speedDelta, { relative: true });
 
-        window.VSC.logger.debug(
+        logger.debug(
           `Wheel control: adjusting speed by ${speedDelta} (deltaMode: ${event.deltaMode}, deltaY: ${event.deltaY})`
         );
       },
@@ -93,5 +93,3 @@ class ControlsManager {
     controller.addEventListener('mousedown', (e: Event) => e.stopPropagation(), false);
   }
 }
-
-window.VSC.ControlsManager = ControlsManager;

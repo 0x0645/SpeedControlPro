@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
+import { BaseSiteHandler } from './base-handler';
 
-class YouTubeHandler extends window.VSC.BaseSiteHandler {
+export class YouTubeHandler extends BaseSiteHandler {
   static matches(): boolean {
     return location.hostname === 'www.youtube.com';
   }
@@ -20,7 +21,7 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
   }
 
   setupYouTubeCSS(): void {
-    window.VSC.logger.debug('YouTube CSS setup completed');
+    logger.debug('YouTube CSS setup completed');
   }
 
   shouldIgnoreVideo(video: HTMLMediaElement): boolean {
@@ -53,15 +54,13 @@ class YouTubeHandler extends window.VSC.BaseSiteHandler {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.debug(`Could not access YouTube iframe videos: ${message}`);
+      logger.debug(`Could not access YouTube iframe videos: ${message}`);
     }
 
     return videos;
   }
 
   onPlayerStateChange(_video: HTMLMediaElement): void {
-    window.VSC.logger.debug('YouTube player state changed');
+    logger.debug('YouTube player state changed');
   }
 }
-
-window.VSC.YouTubeHandler = YouTubeHandler;

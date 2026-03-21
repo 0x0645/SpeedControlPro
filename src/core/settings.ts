@@ -2,32 +2,33 @@ import {
   cloneDefaultKeyBindings,
   normalizeSiteProfiles,
   normalizeStoredSettings,
-} from './settings-helpers.ts';
+} from './settings-helpers';
+import { logger } from '../utils/logger';
+import { DEFAULT_SETTINGS } from '../utils/constants';
+import { StorageManager } from './storage-manager';
 import type { ExtensionSettings, KeyBinding, SiteProfile } from '../types/settings';
-import { normalizeHostname } from '../utils/hostname.ts';
-
-window.VSC = window.VSC || {};
+import { normalizeHostname } from '../utils/hostname';
 
 type ResolvedProfile = SiteProfile & {
   audioBoolean: boolean;
   keyBindings: KeyBinding[];
 };
 
-class VideoSpeedConfig {
+export class VideoSpeedConfig {
   settings: ExtensionSettings;
   pendingSave: number | null;
   saveTimer: ReturnType<typeof setTimeout> | null;
   SAVE_DELAY: number;
 
   constructor() {
-    this.settings = { ...window.VSC.Constants.DEFAULT_SETTINGS } as ExtensionSettings;
+    this.settings = { ...DEFAULT_SETTINGS } as ExtensionSettings;
     this.pendingSave = null;
     this.saveTimer = null;
     this.SAVE_DELAY = 1000;
   }
 
   __resetForTests(): void {
-    this.settings = { ...window.VSC.Constants.DEFAULT_SETTINGS } as ExtensionSettings;
+    this.settings = { ...DEFAULT_SETTINGS } as ExtensionSettings;
     this.pendingSave = null;
 
     if (this.saveTimer) {
@@ -38,11 +39,11 @@ class VideoSpeedConfig {
 
   async load(): Promise<ExtensionSettings> {
     try {
-      const storage = await window.VSC.StorageManager.get(window.VSC.Constants.DEFAULT_SETTINGS);
+      const storage = await StorageManager.get(DEFAULT_SETTINGS);
       const normalizedSettings = normalizeStoredSettings(storage);
 
       if (!storage.keyBindings || storage.keyBindings.length === 0) {
-        window.VSC.logger.info('First initialization - setting up default key bindings');
+        logger.info('First initialization - setting up default key bindings');
         normalizedSettings.keyBindings = cloneDefaultKeyBindings();
         await this.save({ keyBindings: normalizedSettings.keyBindings });
       }
@@ -53,14 +54,14 @@ class VideoSpeedConfig {
       };
 
       this.ensureDisplayBinding();
-      window.VSC.logger.setVerbosity(this.settings.logLevel);
+      logger.setVerbosity(this.settings.logLevel);
 
-      window.VSC.logger.info('Settings loaded successfully');
+      logger.info('Settings loaded successfully');
       return this.settings;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Failed to load settings: ${message}`);
-      return window.VSC.Constants.DEFAULT_SETTINGS as ExtensionSettings;
+      logger.error(`Failed to load settings: ${message}`);
+      return DEFAULT_SETTINGS as ExtensionSettings;
     }
   }
 
@@ -81,23 +82,23 @@ class VideoSpeedConfig {
           this.pendingSave = null;
           this.saveTimer = null;
 
-          await window.VSC.StorageManager.set({ ...this.settings, lastSpeed: speedToSave });
-          window.VSC.logger.info('Debounced speed setting saved successfully');
+          await StorageManager.set({ ...this.settings, lastSpeed: speedToSave });
+          logger.info('Debounced speed setting saved successfully');
         }, this.SAVE_DELAY);
 
         return;
       }
 
-      await window.VSC.StorageManager.set(this.settings);
+      await StorageManager.set(this.settings);
 
       if (newSettings.logLevel !== undefined) {
-        window.VSC.logger.setVerbosity(this.settings.logLevel);
+        logger.setVerbosity(this.settings.logLevel);
       }
 
-      window.VSC.logger.info('Settings saved successfully');
+      logger.info('Settings saved successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Failed to save settings: ${message}`);
+      logger.error(`Failed to save settings: ${message}`);
     }
   }
 
@@ -107,7 +108,7 @@ class VideoSpeedConfig {
       return binding ? binding[property as keyof KeyBinding] : false;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Failed to get key binding for ${action}: ${message}`);
+      logger.error(`Failed to get key binding for ${action}: ${message}`);
       return false;
     }
   }
@@ -116,22 +117,22 @@ class VideoSpeedConfig {
     try {
       const binding = this.settings.keyBindings.find((item) => item.action === action);
       if (!binding) {
-        window.VSC.logger.warn(`No key binding found for action: ${action}`);
+        logger.warn(`No key binding found for action: ${action}`);
         return;
       }
 
       if (['reset', 'fast', 'slower', 'faster'].includes(action)) {
         if (typeof value !== 'number' || isNaN(value)) {
-          window.VSC.logger.warn(`Invalid numeric value for ${action}: ${value}`);
+          logger.warn(`Invalid numeric value for ${action}: ${value}`);
           return;
         }
       }
 
       binding.value = value as number;
-      window.VSC.logger.debug(`Updated key binding ${action} to ${value}`);
+      logger.debug(`Updated key binding ${action} to ${value}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Failed to set key binding for ${action}: ${message}`);
+      logger.error(`Failed to set key binding for ${action}: ${message}`);
     }
   }
 
@@ -175,7 +176,7 @@ class VideoSpeedConfig {
     this.settings.siteProfiles[key] = { ...existing, ...profileData };
     this.settings.siteProfiles = normalizeSiteProfiles(this.settings.siteProfiles);
     await this.save({ siteProfiles: this.settings.siteProfiles });
-    window.VSC.logger.info(`Saved site profile for ${hostname}`);
+    logger.info(`Saved site profile for ${hostname}`);
   }
 
   async removeSiteProfile(hostname: string): Promise<void> {
@@ -183,7 +184,7 @@ class VideoSpeedConfig {
     if (this.settings.siteProfiles?.[key]) {
       delete this.settings.siteProfiles[key];
       await this.save({ siteProfiles: this.settings.siteProfiles });
-      window.VSC.logger.info(`Removed site profile for ${hostname}`);
+      logger.info(`Removed site profile for ${hostname}`);
     }
   }
 
@@ -205,5 +206,4 @@ class VideoSpeedConfig {
   }
 }
 
-window.VSC.videoSpeedConfig = new VideoSpeedConfig();
-window.VSC.VideoSpeedConfig = VideoSpeedConfig;
+export const videoSpeedConfig = new VideoSpeedConfig();

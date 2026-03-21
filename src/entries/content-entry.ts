@@ -1,5 +1,5 @@
-import { injectScript, setupMessageBridge } from '../content/injection-bridge.ts';
-import { isBlacklisted } from '../utils/blacklist.ts';
+import { injectScript, setupMessageBridge } from '../content/injection-bridge';
+import { isBlacklisted } from '../utils/blacklist';
 
 async function init(): Promise<void> {
   try {

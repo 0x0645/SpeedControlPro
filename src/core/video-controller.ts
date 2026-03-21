@@ -1,10 +1,15 @@
-window.VSC = window.VSC || {};
+import { ControlsManager } from '../ui/controls';
+import { ShadowDOMManager } from '../ui/shadow-dom';
+import { stateManager } from './state-manager';
+import { logger } from '../utils/logger';
+import { formatSpeed } from '../utils/constants';
+import { siteHandlerManager } from '../site-handlers/index';
 
 type VscMedia = HTMLMediaElement & {
   vsc?: any;
 };
 
-class VideoController {
+export class VideoController {
   video!: VscMedia;
   parent!: HTMLElement | null;
   config: any;
@@ -34,17 +39,17 @@ class VideoController {
     this.parent = target.parentElement || parent;
     this.config = config;
     this.actionHandler = actionHandler;
-    this.controlsManager = new window.VSC.ControlsManager(actionHandler, config);
+    this.controlsManager = new ControlsManager(actionHandler, config);
     this.shouldStartHidden = shouldStartHidden;
     this.controllerId = this.generateControllerId(target);
     this.speedBeforeReset = null;
 
     target.vsc = this;
 
-    if (window.VSC.stateManager) {
-      window.VSC.stateManager.registerController(this);
+    if (stateManager) {
+      stateManager.registerController(this);
     } else {
-      window.VSC.logger.error('StateManager not available during VideoController initialization');
+      logger.error('StateManager not available during VideoController initialization');
     }
 
     this.initializeSpeed();
@@ -52,15 +57,15 @@ class VideoController {
     this.setupEventHandlers();
     this.setupMutationObserver();
 
-    window.VSC.logger.info('VideoController initialized for video element');
+    logger.info('VideoController initialized for video element');
   }
 
   initializeSpeed(): void {
     const targetSpeed = this.getTargetSpeed();
-    window.VSC.logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
+    logger.debug(`Setting initial playbackRate to: ${targetSpeed}`);
 
     if (this.actionHandler && targetSpeed !== this.video.playbackRate) {
-      window.VSC.logger.debug('Setting initial speed via adjustSpeed');
+      logger.debug('Setting initial speed via adjustSpeed');
       this.actionHandler.adjustSpeed(this.video, targetSpeed, { source: 'internal' });
     }
   }
@@ -68,16 +73,16 @@ class VideoController {
   getTargetSpeed(media: HTMLMediaElement = this.video): number {
     const hostname = location.hostname;
     const speed = this.config.getEffectiveSetting('speed', hostname) || 1.0;
-    window.VSC.logger.debug(`Target speed for ${hostname}: ${speed}`);
+    logger.debug(`Target speed for ${hostname}: ${speed}`);
     return speed;
   }
 
   initializeControls(): HTMLElement {
-    window.VSC.logger.debug('initializeControls Begin');
+    logger.debug('initializeControls Begin');
 
     const document = this.video.ownerDocument;
-    const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
-    const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
+    const speed = formatSpeed(this.video.playbackRate);
+    const position = ShadowDOMManager.calculatePosition(this.video);
     const hostname = location.hostname;
 
     const wrapper = document.createElement('vsc-controller');
@@ -90,7 +95,7 @@ class VideoController {
     const startHidden = this.config.getEffectiveSetting('startHidden', hostname);
     if (startHidden || this.shouldStartHidden) {
       cssClasses.push('vsc-hidden');
-      window.VSC.logger.debug('Starting controller hidden');
+      logger.debug('Starting controller hidden');
     }
 
     wrapper.className = cssClasses.join(' ');
@@ -101,7 +106,7 @@ class VideoController {
       left: ${position.left};
     `;
 
-    const shadow = window.VSC.ShadowDOMManager.createShadowDOM(wrapper, {
+    const shadow = ShadowDOMManager.createShadowDOM(wrapper, {
       top: '0px',
       left: '0px',
       speed,
@@ -110,10 +115,10 @@ class VideoController {
     });
 
     this.controlsManager.setupControlEvents(shadow, this.video);
-    this.speedIndicator = window.VSC.ShadowDOMManager.getSpeedIndicator(shadow);
+    this.speedIndicator = ShadowDOMManager.getSpeedIndicator(shadow);
     this.insertIntoDOM(document, wrapper);
 
-    window.VSC.logger.debug('initializeControls End');
+    logger.debug('initializeControls End');
     return wrapper;
   }
 
@@ -121,7 +126,7 @@ class VideoController {
     const fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
 
-    const positioning = window.VSC.siteHandlerManager.getControllerPosition(
+    const positioning = siteHandlerManager.getControllerPosition(
       this.parent,
       this.video
     );
@@ -142,7 +147,7 @@ class VideoController {
         break;
     }
 
-    window.VSC.logger.debug(`Controller inserted using ${positioning.insertionMethod} method`);
+    logger.debug(`Controller inserted using ${positioning.insertionMethod} method`);
   }
 
   setupEventHandlers(): void {
@@ -150,7 +155,7 @@ class VideoController {
       const media = event.target as HTMLMediaElement;
       const targetSpeed = this.getTargetSpeed(media);
 
-      window.VSC.logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
+      logger.info(`Media event ${event.type}: restoring speed to ${targetSpeed}`);
       this.actionHandler.adjustSpeed(media, targetSpeed, { source: 'internal' });
     };
 
@@ -160,7 +165,7 @@ class VideoController {
     this.video.addEventListener('play', this.handlePlay);
     this.video.addEventListener('seeked', this.handleSeek);
 
-    window.VSC.logger.debug('Added essential media event handlers: play, seeked');
+    logger.debug('Added essential media event handlers: play, seeked');
   }
 
   setupMutationObserver(): void {
@@ -171,7 +176,7 @@ class VideoController {
           mutation.type === 'attributes' &&
           (mutation.attributeName === 'src' || mutation.attributeName === 'currentSrc')
         ) {
-          window.VSC.logger.debug('Mutation of A/V element detected');
+          logger.debug('Mutation of A/V element detected');
           const controller = this.div;
           if (!media.src && !media.currentSrc) {
             controller.classList.add('vsc-nosource');
@@ -188,7 +193,7 @@ class VideoController {
   }
 
   remove(): void {
-    window.VSC.logger.debug('Removing VideoController');
+    logger.debug('Removing VideoController');
 
     if (this.div && this.div.parentNode) {
       this.div.remove();
@@ -205,13 +210,13 @@ class VideoController {
       this.targetObserver.disconnect();
     }
 
-    if (window.VSC.stateManager) {
-      window.VSC.stateManager.removeController(this.controllerId);
+    if (stateManager) {
+      stateManager.removeController(this.controllerId);
     }
 
     delete this.video.vsc;
 
-    window.VSC.logger.debug('VideoController removed successfully');
+    logger.debug('VideoController removed successfully');
   }
 
   generateControllerId(
@@ -258,10 +263,10 @@ class VideoController {
     if (this.video.tagName === 'AUDIO') {
       if (!audioBoolean && !isCurrentlyHidden) {
         this.div.classList.add('vsc-hidden');
-        window.VSC.logger.debug('Hiding audio controller - audio support disabled');
+        logger.debug('Hiding audio controller - audio support disabled');
       } else if (audioBoolean && isCurrentlyHidden && !this.div.classList.contains('vsc-manual')) {
         this.div.classList.remove('vsc-hidden');
-        window.VSC.logger.debug('Showing audio controller - audio support enabled');
+        logger.debug('Showing audio controller - audio support enabled');
       }
       return;
     }
@@ -273,12 +278,10 @@ class VideoController {
       !effectiveStartHidden
     ) {
       this.div.classList.remove('vsc-hidden');
-      window.VSC.logger.debug('Showing controller - video became visible');
+      logger.debug('Showing controller - video became visible');
     } else if (!isVisible && !isCurrentlyHidden) {
       this.div.classList.add('vsc-hidden');
-      window.VSC.logger.debug('Hiding controller - video became invisible');
+      logger.debug('Hiding controller - video became invisible');
     }
   }
 }
-
-window.VSC.VideoController = VideoController;

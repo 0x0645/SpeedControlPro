@@ -1,4 +1,4 @@
-import { ACTION_OPTIONS, keyCodeToLabel } from './options-key-utils.ts';
+import { ACTION_OPTIONS, keyCodeToLabel } from './options-key-utils';
 
 export function buildProfileKeybindingRow(
   binding: { action: string; key: number | null; value: number },

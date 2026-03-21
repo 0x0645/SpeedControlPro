@@ -1,4 +1,4 @@
-import { EXTENSION_MESSAGES } from './utils/message-types.ts';
+import { EXTENSION_MESSAGES } from './utils/message-types';
 
 export async function updateIcon(enabled: boolean): Promise<void> {
   try {

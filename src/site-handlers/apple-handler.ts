@@ -1,6 +1,6 @@
-window.VSC = window.VSC || {};
+import { BaseSiteHandler } from './base-handler';
 
-class AppleHandler extends window.VSC.BaseSiteHandler {
+export class AppleHandler extends BaseSiteHandler {
   static matches(): boolean {
     return location.hostname === 'tv.apple.com';
   }
@@ -28,5 +28,3 @@ class AppleHandler extends window.VSC.BaseSiteHandler {
     return [];
   }
 }
-
-window.VSC.AppleHandler = AppleHandler;

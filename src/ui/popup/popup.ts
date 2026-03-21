@@ -1,5 +1,5 @@
-import { EXTENSION_MESSAGES, MESSAGE_TYPES } from '../../utils/message-types.ts';
-import { normalizeHostname } from '../../utils/hostname.ts';
+import { EXTENSION_MESSAGES, MESSAGE_TYPES } from '../../utils/message-types';
+import { normalizeHostname } from '../../utils/hostname';
 
 let preferredSpeed = 1.0;
 let currentSpeed = 1.0;

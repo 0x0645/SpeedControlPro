@@ -1,15 +1,14 @@
-window.VSC = window.VSC || {};
+import { logger } from './logger';
+import { LOG_LEVELS } from './constants';
 
-class DebugHelper {
+export class DebugHelper {
   isActive = false;
 
   enable(): void {
     this.isActive = true;
     console.log('VSC Debug Mode Enabled');
 
-    if (window.VSC.logger && window.VSC.Constants.LOG_LEVELS) {
-      window.VSC.logger.setVerbosity(window.VSC.Constants.LOG_LEVELS.DEBUG);
-    }
+    logger.setVerbosity(LOG_LEVELS.DEBUG);
 
     (window as any).vscDebug = {
       checkMedia: () => this.checkMediaElements(),
@@ -53,7 +52,7 @@ class DebugHelper {
         left: rect.left,
         visible: rect.width > 0 && rect.height > 0,
       });
-      if (window.VSC.MediaElementObserver && window.VSC_controller?.mediaObserver) {
+      if (window.VSC_controller?.mediaObserver) {
         const observer = window.VSC_controller.mediaObserver;
         console.log('VSC would detect:', observer.isValidMediaElement(media));
         console.log('VSC would start hidden:', observer.shouldStartHidden(media));
@@ -215,5 +214,5 @@ class DebugHelper {
   }
 }
 
-window.VSC.DebugHelper = DebugHelper;
-(window as any).vscDebugHelper = new DebugHelper();
+export const debugHelper = new DebugHelper();
+(window as any).vscDebugHelper = debugHelper;

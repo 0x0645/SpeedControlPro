@@ -1,11 +1,10 @@
-import { BRIDGE_ACTIONS, BRIDGE_SOURCES } from '../utils/message-types.ts';
-import { buildStorageChanges, normalizeKeys, notifyCallbacks } from './storage-helpers.ts';
+import { BRIDGE_ACTIONS, BRIDGE_SOURCES } from '../utils/message-types';
+import { buildStorageChanges, normalizeKeys, notifyCallbacks } from './storage-helpers';
+import { logger } from '../utils/logger';
 import type { ExtensionSettings } from '../types/settings';
 import type { StorageChangeMap, StorageSnapshot } from '../types/contracts';
 
-window.VSC = window.VSC || {};
-
-class StorageManager {
+export class StorageManager {
   static errorCallback: ((error: Error, context: unknown) => void) | null = null;
   static _pageStorageListenerAttached = false;
   static _pageStorageCallbacks: Array<(changes: StorageChangeMap) => void> = [];
@@ -79,12 +78,12 @@ class StorageManager {
     try {
       const parsedSettings = JSON.parse(settingsElement.textContent) as StorageSnapshot;
       this.setCachedSettings(parsedSettings);
-      window.VSC.logger?.debug('Loaded settings from script element');
+      logger.debug('Loaded settings from script element');
       settingsElement.remove();
       return parsedSettings;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger?.error(`Failed to parse settings from script element: ${message}`);
+      logger.error(`Failed to parse settings from script element: ${message}`);
       return null;
     }
   }
@@ -97,7 +96,7 @@ class StorageManager {
     if (this.hasChromeStorage()) {
       return new Promise((resolve) => {
         globalThis.chrome.storage.sync.get(defaults, (storage: StorageSnapshot) => {
-          window.VSC.logger?.debug('Retrieved settings from chrome.storage');
+          logger.debug('Retrieved settings from chrome.storage');
           resolve(storage);
         });
       });
@@ -108,11 +107,11 @@ class StorageManager {
     }
 
     if (this.getCachedSettings()) {
-      window.VSC.logger?.debug('Using VSC_settings');
+      logger.debug('Using VSC_settings');
       return Promise.resolve({ ...defaults, ...this.getCachedSettings() });
     }
 
-    window.VSC.logger?.debug('No settings available, using defaults');
+    logger.debug('No settings available, using defaults');
     return Promise.resolve(defaults);
   }
 
@@ -124,13 +123,13 @@ class StorageManager {
             reject(this.reportStorageError('save', globalThis.chrome.runtime.lastError, data));
             return;
           }
-          window.VSC.logger?.debug('Settings saved to chrome.storage');
+          logger.debug('Settings saved to chrome.storage');
           resolve();
         });
       });
     }
 
-    window.VSC.logger?.debug('Sending storage update to content script');
+    logger.debug('Sending storage update to content script');
     this.postToContent(BRIDGE_ACTIONS.STORAGE_UPDATE, data);
     this.mergeCachedSettings(data);
     return Promise.resolve();
@@ -150,7 +149,7 @@ class StorageManager {
             );
             return;
           }
-          window.VSC.logger?.debug('Keys removed from storage');
+          logger.debug('Keys removed from storage');
           resolve();
         });
       });
@@ -172,7 +171,7 @@ class StorageManager {
             );
             return;
           }
-          window.VSC.logger?.debug('Storage cleared');
+          logger.debug('Storage cleared');
           resolve();
         });
       });
@@ -218,5 +217,3 @@ class StorageManager {
     });
   }
 }
-
-window.VSC.StorageManager = StorageManager;

@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
+import { BaseSiteHandler } from './base-handler';
 
-class FacebookHandler extends window.VSC.BaseSiteHandler {
+export class FacebookHandler extends BaseSiteHandler {
   facebookObserver: MutationObserver | null = null;
 
   static matches(): boolean {
@@ -15,7 +16,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
         parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement
           ?.parentElement?.parentElement || parent;
     } catch {
-      window.VSC.logger.warn('Facebook DOM structure changed, using fallback positioning');
+      logger.warn('Facebook DOM structure changed, using fallback positioning');
       targetParent = parent.parentElement;
     }
 
@@ -40,7 +41,7 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
               const videos =
                 (node as Element).querySelectorAll && (node as Element).querySelectorAll('video');
               if (videos && videos.length > 0) {
-                window.VSC.logger.debug(`Facebook: Found ${videos.length} new videos`);
+                logger.debug(`Facebook: Found ${videos.length} new videos`);
                 this.onNewVideosDetected(Array.from(videos) as HTMLMediaElement[]);
               }
             }
@@ -55,11 +56,11 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
     });
 
     this.facebookObserver = observer;
-    window.VSC.logger.debug('Facebook dynamic content observer set up');
+    logger.debug('Facebook dynamic content observer set up');
   }
 
   onNewVideosDetected(videos: HTMLMediaElement[]): void {
-    window.VSC.logger.debug(`Facebook: ${videos.length} new videos detected`);
+    logger.debug(`Facebook: ${videos.length} new videos detected`);
   }
 
   shouldIgnoreVideo(video: HTMLMediaElement): boolean {
@@ -83,5 +84,3 @@ class FacebookHandler extends window.VSC.BaseSiteHandler {
     }
   }
 }
-
-window.VSC.FacebookHandler = FacebookHandler;

@@ -3,7 +3,7 @@ import {
   BRIDGE_SOURCES,
   EXTENSION_MESSAGES,
   MESSAGE_TYPES,
-} from '../utils/message-types.ts';
+} from '../utils/message-types';
 
 let bridgeInitialized = false;
 

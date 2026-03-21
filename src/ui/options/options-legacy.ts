@@ -5,21 +5,21 @@
  */
 
 // Core utilities and constants - must load first
-import '../../utils/constants.ts';
-import '../../utils/logger.ts';
+import '../../utils/constants';
+import '../../utils/logger';
 
 // Storage and settings - depends on utils
-import '../../core/storage-manager.ts';
-import '../../core/settings.ts';
+import '../../core/storage-manager';
+import '../../core/settings';
 import {
   ACTION_OPTIONS,
   BLACKLISTED_KEYCODES as IMPORTED_BLACKLISTED_KEYCODES,
   keyCodeToLabel,
   KEY_CODE_ALIASES,
   normalizeKeyBindingsForce,
-} from './options-key-utils.ts';
-import { buildProfileKeybindingRow, cloneGlobalBindings } from './options-profile-utils.ts';
-import { normalizeHostname } from '../../utils/hostname.ts';
+} from './options-key-utils';
+import { buildProfileKeybindingRow, cloneGlobalBindings } from './options-profile-utils';
+import { normalizeHostname } from '../../utils/hostname';
 
 // Initialize global namespace for options page
 window.VSC = window.VSC || {};

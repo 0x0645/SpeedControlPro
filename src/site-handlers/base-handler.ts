@@ -1,4 +1,4 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
 
 export type ControllerPosition = {
   insertionPoint: any;
@@ -6,7 +6,7 @@ export type ControllerPosition = {
   targetParent: any;
 };
 
-class BaseSiteHandler {
+export class BaseSiteHandler {
   hostname: string;
 
   constructor() {
@@ -36,11 +36,11 @@ class BaseSiteHandler {
   }
 
   initialize(_document: Document): void {
-    window.VSC.logger.debug(`Initializing ${this.constructor.name} for ${this.hostname}`);
+    logger.debug(`Initializing ${this.constructor.name} for ${this.hostname}`);
   }
 
   cleanup(): void {
-    window.VSC.logger.debug(`Cleaning up ${this.constructor.name}`);
+    logger.debug(`Cleaning up ${this.constructor.name}`);
   }
 
   shouldIgnoreVideo(_video: HTMLMediaElement): boolean {
@@ -55,5 +55,3 @@ class BaseSiteHandler {
     return [];
   }
 }
-
-window.VSC.BaseSiteHandler = BaseSiteHandler;

@@ -4,13 +4,13 @@ import {
   shouldSkipMediaForEvent,
   showControllerForMedia,
   toggleControllerDisplay,
-} from './action-handler/controller-actions.ts';
+} from './action-handler/controller-actions';
 import {
   isValidSpeedChange,
   calculateTargetSpeed,
   clampSpeed,
   resolveForcedSpeed,
-} from './action-handler/speed-actions.ts';
+} from './action-handler/speed-actions';
 import {
   seek,
   pause,
@@ -21,9 +21,9 @@ import {
   setMark,
   jumpToMark,
   blinkController,
-} from './action-handler/playback-actions.ts';
-
-window.VSC = window.VSC || {};
+} from './action-handler/playback-actions';
+import { logger } from '../utils/logger';
+import { DragHandler } from '../ui/drag-handler';
 
 type VscMedia = HTMLMediaElement & {
   vsc?: {
@@ -32,7 +32,7 @@ type VscMedia = HTMLMediaElement & {
   };
 };
 
-class ActionHandler {
+export class ActionHandler {
   config: any;
   eventManager: any;
 
@@ -98,34 +98,34 @@ class ActionHandler {
   executeAction(action: string, value: any, video: VscMedia, e?: Event | null): void {
     switch (action) {
       case 'rewind':
-        window.VSC.logger.debug('Rewind');
+        logger.debug('Rewind');
         this.seek(video, -value);
         break;
       case 'advance':
-        window.VSC.logger.debug('Fast forward');
+        logger.debug('Fast forward');
         this.seek(video, value);
         break;
       case 'faster':
-        window.VSC.logger.debug('Increase speed');
+        logger.debug('Increase speed');
         this.adjustSpeed(video, value, { relative: true });
         break;
       case 'slower':
-        window.VSC.logger.debug('Decrease speed');
+        logger.debug('Decrease speed');
         this.adjustSpeed(video, -value, { relative: true });
         break;
       case 'reset':
-        window.VSC.logger.debug('Reset speed');
+        logger.debug('Reset speed');
         this.resetSpeed(video, value);
         break;
       case 'display':
         this.toggleControllerDisplay(video);
         break;
       case 'blink':
-        window.VSC.logger.debug('Showing controller momentarily');
+        logger.debug('Showing controller momentarily');
         this.blinkController(video.vsc!.div!, value);
         break;
       case 'drag':
-        window.VSC.DragHandler.handleDrag(video, e);
+        DragHandler.handleDrag(video, e);
         break;
       case 'fast':
         this.resetSpeed(video, value);
@@ -149,21 +149,21 @@ class ActionHandler {
         this.jumpToMark(video);
         break;
       case 'SET_SPEED':
-        window.VSC.logger.info('Setting speed to:', value);
+        logger.info('Setting speed to:', value);
         this.adjustSpeed(video, value, { source: 'internal' });
         break;
       case 'ADJUST_SPEED':
-        window.VSC.logger.info('Adjusting speed by:', value);
+        logger.info('Adjusting speed by:', value);
         this.adjustSpeed(video, value, { relative: true, source: 'internal' });
         break;
       case 'RESET_SPEED': {
-        window.VSC.logger.info('Resetting speed');
+        logger.info('Resetting speed');
         const preferredSpeed = this.config.getKeyBinding('fast') || 1.0;
         this.adjustSpeed(video, preferredSpeed, { source: 'internal' });
         break;
       }
       default:
-        window.VSC.logger.warn(`Unknown action: ${action}`);
+        logger.warn(`Unknown action: ${action}`);
     }
   }
 
@@ -208,15 +208,15 @@ class ActionHandler {
     value: number,
     options: { relative?: boolean; source?: string } = {}
   ): any {
-    return window.VSC.logger.withContext(video, () => {
+    return logger.withContext(video, () => {
       const { relative = false, source = 'internal' } = options;
 
-      window.VSC.logger.debug(
+      logger.debug(
         `adjustSpeed called: value=${value}, relative=${relative}, source=${source}`
       );
       const stack = new Error().stack || '';
       const stackLines = stack.split('\n').slice(1, 8);
-      window.VSC.logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
+      logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
 
       if (!this.isValidSpeedChange(video, value)) {
         return;
@@ -266,25 +266,25 @@ class ActionHandler {
 
     const speedIndicator = video.vsc?.speedIndicator;
     if (!speedIndicator) {
-      window.VSC.logger.warn(
+      logger.warn(
         'Cannot update speed indicator: video controller UI not fully initialized'
       );
       return;
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);
 
-    window.VSC.logger.debug(
+    logger.debug(
       `Updating config.settings.lastSpeed from ${this.config.settings.lastSpeed} to ${numericSpeed}`
     );
     this.config.settings.lastSpeed = numericSpeed;
 
     if (this.config.settings.rememberSpeed) {
-      window.VSC.logger.debug(`Saving lastSpeed ${numericSpeed} to Chrome storage`);
+      logger.debug(`Saving lastSpeed ${numericSpeed} to Chrome storage`);
       this.config.save({
         lastSpeed: this.config.settings.lastSpeed,
       });
     } else {
-      window.VSC.logger.debug('NOT saving to storage - rememberSpeed is false');
+      logger.debug('NOT saving to storage - rememberSpeed is false');
     }
 
     if (video.vsc?.div) {
@@ -296,5 +296,3 @@ class ActionHandler {
     }
   }
 }
-
-window.VSC.ActionHandler = ActionHandler;

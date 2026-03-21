@@ -1,4 +1,7 @@
-window.VSC = window.VSC || {};
+import { inIframe } from './dom-utils';
+import { logger } from './logger';
+import { stateManager } from '../core/state-manager';
+import { SPEED_LIMITS } from './constants';
 
 type ManagedListener = {
   type: string;
@@ -6,7 +9,7 @@ type ManagedListener = {
   useCapture: boolean;
 };
 
-class EventManager {
+export class EventManager {
   static COOLDOWN_MS = 200;
 
   config: any;
@@ -34,7 +37,7 @@ class EventManager {
     const docs = [document];
 
     try {
-      if (window.VSC.inIframe()) {
+      if (inIframe()) {
         if (window.top?.document) {
           docs.push(window.top.document);
         }
@@ -60,7 +63,7 @@ class EventManager {
 
   handleKeydown(event: KeyboardEvent): boolean {
     const keyCode = event.keyCode;
-    window.VSC.logger.verbose(`Processing keydown event: key=${event.key}, keyCode=${keyCode}`);
+    logger.verbose(`Processing keydown event: key=${event.key}, keyCode=${keyCode}`);
 
     const eventSignature = `${keyCode}_${event.timeStamp}_${event.type}`;
     if (this.lastKeyEventSignature === eventSignature) {
@@ -70,7 +73,7 @@ class EventManager {
     this.lastKeyEventSignature = eventSignature;
 
     if (this.hasActiveModifier(event)) {
-      window.VSC.logger.debug(`Keydown event ignored due to active modifier: ${keyCode}`);
+      logger.debug(`Keydown event ignored due to active modifier: ${keyCode}`);
       return false;
     }
 
@@ -78,8 +81,8 @@ class EventManager {
       return false;
     }
 
-    const mediaElements = window.VSC.stateManager
-      ? window.VSC.stateManager.getControlledElements()
+    const mediaElements = stateManager
+      ? stateManager.getControlledElements()
       : [];
     if (!mediaElements.length) {
       return false;
@@ -96,7 +99,7 @@ class EventManager {
         event.stopPropagation();
       }
     } else {
-      window.VSC.logger.verbose(`No key binding found for keyCode: ${keyCode}`);
+      logger.verbose(`No key binding found for keyCode: ${keyCode}`);
     }
 
     return false;
@@ -142,13 +145,13 @@ class EventManager {
 
   handleRateChange(event: Event): void {
     if (this.coolDown) {
-      window.VSC.logger.debug('Rate change event blocked by cooldown');
+      logger.debug('Rate change event blocked by cooldown');
 
       const video = (event.composedPath ? event.composedPath()[0] : event.target) as any;
       if (video.vsc && this.config.settings.lastSpeed !== undefined) {
         const authoritativeSpeed = this.config.settings.lastSpeed;
         if (Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
-          window.VSC.logger.info(
+          logger.info(
             `Restoring speed during cooldown from external ${video.playbackRate} to authoritative ${authoritativeSpeed}`
           );
           video.playbackRate = authoritativeSpeed;
@@ -161,13 +164,13 @@ class EventManager {
 
     const video = (event.composedPath ? event.composedPath()[0] : event.target) as any;
     if (!video.vsc) {
-      window.VSC.logger.debug('Skipping ratechange - no VSC controller attached');
+      logger.debug('Skipping ratechange - no VSC controller attached');
       return;
     }
 
     const customEvent = event as CustomEvent;
     if (customEvent.detail && customEvent.detail.origin === 'videoSpeed') {
-      window.VSC.logger.debug('Ignoring extension-originated rate change');
+      logger.debug('Ignoring extension-originated rate change');
       return;
     }
 
@@ -176,7 +179,7 @@ class EventManager {
         video.playbackRate = Number(customEvent.detail.speed);
       } else {
         const authoritativeSpeed = this.config.settings.lastSpeed || 1.0;
-        window.VSC.logger.info(
+        logger.info(
           `Force mode: restoring external ${video.playbackRate} to authoritative ${authoritativeSpeed}`
         );
         video.playbackRate = authoritativeSpeed;
@@ -186,7 +189,7 @@ class EventManager {
     }
 
     if (video.readyState < 1) {
-      window.VSC.logger.debug(
+      logger.debug(
         'Ignoring external ratechange during video initialization (readyState < 1)'
       );
       event.stopImmediatePropagation();
@@ -194,9 +197,9 @@ class EventManager {
     }
 
     const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
-    const min = window.VSC.Constants.SPEED_LIMITS.MIN;
+    const min = SPEED_LIMITS.MIN;
     if (!isNaN(rawExternalRate) && rawExternalRate <= min) {
-      window.VSC.logger.debug(
+      logger.debug(
         `Ignoring external ratechange below MIN: raw=${rawExternalRate}, MIN=${min}`
       );
       event.stopImmediatePropagation();
@@ -213,7 +216,7 @@ class EventManager {
   }
 
   refreshCoolDown(): void {
-    window.VSC.logger.debug('Begin refreshCoolDown');
+    logger.debug('Begin refreshCoolDown');
 
     if (this.coolDown) {
       globalThis.clearTimeout(this.coolDown);
@@ -223,19 +226,19 @@ class EventManager {
       this.coolDown = false;
     }, EventManager.COOLDOWN_MS);
 
-    window.VSC.logger.debug('End refreshCoolDown');
+    logger.debug('End refreshCoolDown');
   }
 
   showController(controller: Element): void {
     const effectiveStartHidden = this.config.getEffectiveSetting('startHidden', location.hostname);
     if (effectiveStartHidden && !controller.classList.contains('vsc-manual')) {
-      window.VSC.logger.info(
+      logger.info(
         `Controller respecting startHidden setting - no temporary display (startHidden: ${effectiveStartHidden}, manual: ${controller.classList.contains('vsc-manual')})`
       );
       return;
     }
 
-    window.VSC.logger.info(
+    logger.info(
       `Showing controller temporarily (startHidden: ${effectiveStartHidden}, manual: ${controller.classList.contains('vsc-manual')})`
     );
     controller.classList.add('vsc-show');
@@ -247,7 +250,7 @@ class EventManager {
     this.timer = globalThis.setTimeout(() => {
       controller.classList.remove('vsc-show');
       this.timer = null;
-      window.VSC.logger.debug('Hiding controller');
+      logger.debug('Hiding controller');
     }, 2000);
   }
 
@@ -258,7 +261,7 @@ class EventManager {
           doc.removeEventListener(type, handler, useCapture);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          window.VSC.logger.warn(`Failed to remove event listener: ${message}`);
+          logger.warn(`Failed to remove event listener: ${message}`);
         }
       });
     });
@@ -276,5 +279,3 @@ class EventManager {
     }
   }
 }
-
-window.VSC.EventManager = EventManager;

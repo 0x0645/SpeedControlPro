@@ -1,6 +1,6 @@
-window.VSC = window.VSC || {};
+import { BaseSiteHandler } from './base-handler';
 
-class AmazonHandler extends window.VSC.BaseSiteHandler {
+export class AmazonHandler extends BaseSiteHandler {
   static matches(): boolean {
     return (
       location.hostname === 'www.amazon.com' ||
@@ -35,5 +35,3 @@ class AmazonHandler extends window.VSC.BaseSiteHandler {
     return ['.dv-player-container', '.webPlayerContainer', '[data-testid="video-player"]'];
   }
 }
-
-window.VSC.AmazonHandler = AmazonHandler;

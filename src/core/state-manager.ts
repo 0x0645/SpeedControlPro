@@ -1,6 +1,5 @@
-import { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } from '../utils/message-types.ts';
-
-window.VSC = window.VSC || {};
+import { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } from '../utils/message-types';
+import { logger } from '../utils/logger';
 
 type ControllerInfo = {
   controller?: { video?: HTMLMediaElement | null } | null;
@@ -10,7 +9,7 @@ type ControllerInfo = {
   created?: number;
 };
 
-class VSCStateManager {
+export class VSCStateManager {
   controllers: Map<string, ControllerInfo>;
   mediaIndex: WeakMap<HTMLMediaElement, string>;
   notificationTimer: number | null;
@@ -22,7 +21,7 @@ class VSCStateManager {
     this.notificationTimer = null;
     this.notificationDelay = 25;
 
-    window.VSC.logger?.debug('VSCStateManager initialized');
+    logger?.debug('VSCStateManager initialized');
   }
 
   __resetForTests() {
@@ -67,7 +66,7 @@ class VSCStateManager {
 
   registerController(controller: { controllerId?: string; video?: HTMLMediaElement | null }) {
     if (!controller || !controller.controllerId) {
-      window.VSC.logger?.warn('Invalid controller registration attempt');
+      logger?.warn('Invalid controller registration attempt');
       return;
     }
 
@@ -83,7 +82,7 @@ class VSCStateManager {
     if (controller.video) {
       this.mediaIndex.set(controller.video, controller.controllerId);
     }
-    window.VSC.logger?.debug(`Controller registered: ${controller.controllerId}`);
+    logger?.debug(`Controller registered: ${controller.controllerId}`);
     this.scheduleStateUpdate();
   }
 
@@ -95,7 +94,7 @@ class VSCStateManager {
         this.mediaIndex.delete(media);
       }
       this.controllers.delete(controllerId);
-      window.VSC.logger?.debug(`Controller unregistered: ${controllerId}`);
+      logger?.debug(`Controller unregistered: ${controllerId}`);
       this.scheduleStateUpdate();
     }
   }
@@ -160,7 +159,6 @@ class VSCStateManager {
   }
 }
 
-window.VSC.StateManager = VSCStateManager;
-window.VSC.stateManager = new VSCStateManager();
+export const stateManager = new VSCStateManager();
 
-window.VSC.logger?.info('State Manager module loaded');
+logger?.info('State Manager module loaded');

@@ -2,7 +2,7 @@ import {
   clearControllerBlinkTimeout,
   isAudioController,
   showControllerForMedia,
-} from './controller-actions.ts';
+} from './controller-actions';
 
 function seek(video: HTMLMediaElement, seekSeconds: number): void {
   window.VSC.siteHandlerManager.handleSeek(video, seekSeconds);

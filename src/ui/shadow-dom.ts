@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { logger } from '../utils/logger';
+import { formatSpeed } from '../utils/constants';
 
-class ShadowDOMManager {
+export class ShadowDOMManager {
   static createShadowDOM(wrapper: HTMLElement, options: any = {}): ShadowRoot {
     const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
     const shadow = wrapper.attachShadow({ mode: 'open' });
@@ -45,11 +46,11 @@ class ShadowDOMManager {
     controls.style.cssText = `font-size: ${buttonSize}px; line-height: ${buttonSize}px;`;
 
     const buttons = [
-      { action: 'rewind', text: '«', class: 'rw' },
-      { action: 'slower', text: '−', class: '' },
+      { action: 'rewind', text: '\u00AB', class: 'rw' },
+      { action: 'slower', text: '\u2212', class: '' },
       { action: 'faster', text: '+', class: '' },
-      { action: 'advance', text: '»', class: 'rw' },
-      { action: 'display', text: '×', class: 'hideButton' },
+      { action: 'advance', text: '\u00BB', class: 'rw' },
+      { action: 'display', text: '\u00D7', class: 'hideButton' },
     ];
 
     buttons.forEach((btnConfig) => {
@@ -64,7 +65,7 @@ class ShadowDOMManager {
 
     controller.appendChild(controls);
     shadow.appendChild(controller);
-    window.VSC.logger.debug('Shadow DOM created for video controller');
+    logger.debug('Shadow DOM created for video controller');
     return shadow;
   }
 
@@ -87,7 +88,7 @@ class ShadowDOMManager {
   static updateSpeedDisplay(shadow: ShadowRoot, speed: number): void {
     const speedIndicator = this.getSpeedIndicator(shadow);
     if (speedIndicator) {
-      speedIndicator.textContent = window.VSC.Constants.formatSpeed(speed);
+      speedIndicator.textContent = formatSpeed(speed);
     }
   }
 
@@ -99,5 +100,3 @@ class ShadowDOMManager {
     return { top, left };
   }
 }
-
-window.VSC.ShadowDOMManager = ShadowDOMManager;

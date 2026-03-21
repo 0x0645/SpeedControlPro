@@ -1,15 +1,14 @@
-window.VSC = window.VSC || {};
-window.VSC.DomUtils = {};
+import { logger } from './logger';
 
-window.VSC.DomUtils.inIframe = function (): boolean {
+export function inIframe(): boolean {
   try {
     return window.self !== window.top;
   } catch {
     return true;
   }
-};
+}
 
-window.VSC.DomUtils.getShadow = function (parent: Element | ShadowRoot, maxDepth = 10): Element[] {
+export function getShadow(parent: Element | ShadowRoot, maxDepth = 10): Element[] {
   const result: Element[] = [];
   const visited = new WeakSet<Element | ShadowRoot>();
 
@@ -28,9 +27,7 @@ window.VSC.DomUtils.getShadow = function (parent: Element | ShadowRoot, maxDepth
 
         const childWithShadow = child as Element & { shadowRoot?: ShadowRoot | null };
         if (childWithShadow.shadowRoot && depth < maxDepth - 2) {
-          result.push(
-            ...window.VSC.DomUtils.getShadow(childWithShadow.shadowRoot, maxDepth - depth)
-          );
+          result.push(...getShadow(childWithShadow.shadowRoot, maxDepth - depth));
         }
 
         child = child.nextElementSibling;
@@ -40,9 +37,9 @@ window.VSC.DomUtils.getShadow = function (parent: Element | ShadowRoot, maxDepth
 
   getChild(parent);
   return result.flat(Infinity) as Element[];
-};
+}
 
-window.VSC.DomUtils.findVideoParent = function (element: HTMLElement): HTMLElement {
+export function findVideoParent(element: HTMLElement): HTMLElement {
   let parentElement = element.parentElement as HTMLElement;
 
   while (
@@ -54,13 +51,13 @@ window.VSC.DomUtils.findVideoParent = function (element: HTMLElement): HTMLEleme
   }
 
   return parentElement;
-};
+}
 
-window.VSC.DomUtils.initializeWhenReady = function (
+export function initializeWhenReady(
   document: Document,
   callback: (doc: Document) => void
 ): void {
-  window.VSC.logger.debug('Begin initializeWhenReady');
+  logger.debug('Begin initializeWhenReady');
 
   const handleWindowLoad = () => {
     callback(window.document);
@@ -82,11 +79,11 @@ window.VSC.DomUtils.initializeWhenReady = function (
     }
   }
 
-  window.VSC.logger.debug('End initializeWhenReady');
-};
+  logger.debug('End initializeWhenReady');
+}
 
-window.VSC.DomUtils.findMediaElements = function (
-  node: any,
+export function findMediaElements(
+  node: Element | Document | null,
   audioEnabled = false
 ): HTMLMediaElement[] {
   if (!node) {
@@ -96,22 +93,27 @@ window.VSC.DomUtils.findMediaElements = function (
   const mediaElements: HTMLMediaElement[] = [];
   const selector = audioEnabled ? 'video,audio' : 'video';
 
-  if (node && node.matches && node.matches(selector)) {
+  if ('matches' in node && (node as Element).matches(selector)) {
     mediaElements.push(node as HTMLMediaElement);
   }
 
-  if (node.querySelectorAll) {
+  if ('querySelectorAll' in node) {
     mediaElements.push(...(Array.from(node.querySelectorAll(selector)) as HTMLMediaElement[]));
   }
 
-  if (node.shadowRoot) {
-    mediaElements.push(...window.VSC.DomUtils.findShadowMedia(node.shadowRoot, selector));
+  if ('shadowRoot' in node && (node as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot) {
+    mediaElements.push(
+      ...findShadowMedia(
+        (node as Element & { shadowRoot: ShadowRoot }).shadowRoot,
+        selector
+      )
+    );
   }
 
   return mediaElements;
-};
+}
 
-window.VSC.DomUtils.findShadowMedia = function (
+export function findShadowMedia(
   root: ShadowRoot | Document | Element,
   selector: string
 ): HTMLMediaElement[] {
@@ -119,7 +121,7 @@ window.VSC.DomUtils.findShadowMedia = function (
   const rootWithShadow = root as Element & { shadowRoot?: ShadowRoot | null };
 
   if (rootWithShadow.shadowRoot) {
-    results.push(...window.VSC.DomUtils.findShadowMedia(rootWithShadow.shadowRoot, selector));
+    results.push(...findShadowMedia(rootWithShadow.shadowRoot, selector));
   }
 
   if ('querySelectorAll' in root && root.querySelectorAll) {
@@ -132,10 +134,10 @@ window.VSC.DomUtils.findShadowMedia = function (
     >;
     allElements.forEach((element) => {
       if (element.shadowRoot) {
-        results.push(...window.VSC.DomUtils.findShadowMedia(element.shadowRoot, selector));
+        results.push(...findShadowMedia(element.shadowRoot, selector));
       }
     });
   }
 
   return results;
-};
+}
