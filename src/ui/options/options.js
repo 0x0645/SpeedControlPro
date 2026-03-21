@@ -611,14 +611,15 @@ function renderSiteProfileList() {
       entry.className = "site-profile-entry";
       entry.dataset.hostname = hostname;
 
-      // Basic setting fields
-      const fields = [
-        { key: 'speed', label: 'Speed', type: 'number', step: '0.1', placeholder: 'global' },
+      const speedVal = profile.speed !== undefined ? profile.speed : '';
+
+      // Check if any advanced settings are customized
+      const advancedFields = [
         { key: 'controllerOpacity', label: 'Opacity', type: 'number', step: '0.1', placeholder: 'global' },
         { key: 'controllerButtonSize', label: 'Btn Size', type: 'number', step: '1', placeholder: 'global' },
       ];
 
-      let fieldsHtml = fields.map(f => {
+      const advFieldsHtml = advancedFields.map(f => {
         const val = profile[f.key] !== undefined ? profile[f.key] : '';
         return `<label class="profile-field">
           <span class="profile-field-label">${f.label}</span>
@@ -630,45 +631,67 @@ function renderSiteProfileList() {
       const audioBooleanChecked = profile.audioBoolean === false ? '' : 'checked';
       const hasStartHidden = profile.startHidden !== undefined;
       const hasAudioBoolean = profile.audioBoolean !== undefined;
-
-      // Keybindings section
       const hasCustomKb = Array.isArray(profile.keyBindings) && profile.keyBindings.length > 0;
       const kbRows = hasCustomKb
         ? profile.keyBindings.map((kb, i) => buildProfileKeybindingRow(kb, i)).join('')
         : '';
 
+      // Auto-expand advanced if any advanced setting is customized
+      const hasAdvanced = profile.controllerOpacity !== undefined ||
+        profile.controllerButtonSize !== undefined ||
+        hasStartHidden || hasAudioBoolean || hasCustomKb;
+
       entry.innerHTML = `
         <div class="profile-header">
           <span class="site-profile-host">${hostname}</span>
-          <button class="site-profile-remove" data-hostname="${hostname}" title="Remove profile">X</button>
+          <button class="site-profile-remove" data-hostname="${hostname}" title="Remove profile">&times;</button>
         </div>
         <div class="profile-fields">
-          ${fieldsHtml}
-          <label class="profile-field profile-checkbox">
-            <input type="checkbox" class="profile-cb" data-key="startHidden" ${startHiddenChecked} ${hasStartHidden ? 'data-override="true"' : ''} />
-            <span class="profile-field-label">Start hidden</span>
-          </label>
-          <label class="profile-field profile-checkbox">
-            <input type="checkbox" class="profile-cb" data-key="audioBoolean" ${audioBooleanChecked} ${hasAudioBoolean ? 'data-override="true"' : ''} />
-            <span class="profile-field-label">Audio support</span>
+          <label class="profile-field">
+            <span class="profile-field-label">Speed</span>
+            <input type="number" step="0.1" class="profile-input" data-key="speed" value="${speedVal}" placeholder="global" />
           </label>
         </div>
-        <div class="profile-shortcuts">
-          <div class="profile-shortcuts-header">
-            <span class="profile-field-label">Shortcuts</span>
-            <span class="profile-kb-status">${hasCustomKb ? profile.keyBindings.length + ' custom' : 'Using global'}</span>
+        <button class="profile-advanced-toggle" data-expanded="${hasAdvanced}">${hasAdvanced ? 'Hide advanced' : 'More settings'}</button>
+        <div class="profile-advanced ${hasAdvanced ? 'expanded' : ''}">
+          <div class="profile-fields">
+            ${advFieldsHtml}
+            <label class="profile-field profile-checkbox">
+              <input type="checkbox" class="profile-cb" data-key="startHidden" ${startHiddenChecked} ${hasStartHidden ? 'data-override="true"' : ''} />
+              <span class="profile-field-label">Start hidden</span>
+            </label>
+            <label class="profile-field profile-checkbox">
+              <input type="checkbox" class="profile-cb" data-key="audioBoolean" ${audioBooleanChecked} ${hasAudioBoolean ? 'data-override="true"' : ''} />
+              <span class="profile-field-label">Audio support</span>
+            </label>
           </div>
-          <div class="profile-kb-list ${hasCustomKb ? 'expanded' : ''}">${kbRows}</div>
-          <div class="profile-kb-actions">
-            ${hasCustomKb
-              ? `<button class="profile-kb-add secondary" title="Add shortcut">+ Add</button>
-                 <button class="profile-kb-reset secondary" title="Reset to global shortcuts">Reset to global</button>`
-              : `<button class="profile-kb-customize secondary">Customize shortcuts</button>`
-            }
+          <div class="profile-shortcuts">
+            <div class="profile-shortcuts-header">
+              <span class="profile-field-label">Shortcuts</span>
+              <span class="profile-kb-status">${hasCustomKb ? profile.keyBindings.length + ' custom' : 'Using global'}</span>
+            </div>
+            <div class="profile-kb-list ${hasCustomKb ? 'expanded' : ''}">${kbRows}</div>
+            <div class="profile-kb-actions">
+              ${hasCustomKb
+                ? `<button class="profile-kb-add secondary" title="Add shortcut">+ Add</button>
+                   <button class="profile-kb-reset secondary" title="Reset to global shortcuts">Reset to global</button>`
+                : `<button class="profile-kb-customize secondary">Customize shortcuts</button>`
+              }
+            </div>
           </div>
         </div>
       `;
       listEl.appendChild(entry);
+    });
+
+    // Advanced toggle handlers
+    listEl.querySelectorAll(".profile-advanced-toggle").forEach(btn => {
+      btn.addEventListener("click", function () {
+        const panel = this.nextElementSibling;
+        const isExpanded = panel.classList.toggle("expanded");
+        this.textContent = isExpanded ? "Hide advanced" : "More settings";
+        this.dataset.expanded = isExpanded;
+      });
     });
 
     // Attach event handlers

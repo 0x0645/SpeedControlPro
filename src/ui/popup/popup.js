@@ -7,47 +7,35 @@ const MessageTypes = {
   GET_SITE_INFO: 'VSC_GET_SITE_INFO'
 };
 
-document.addEventListener("DOMContentLoaded", function () {
-  // Load settings and initialize speed controls
-  loadSettingsAndInitialize();
+let preferredSpeed = 1.0;
 
-  // Initialize per-site speed UI
+document.addEventListener("DOMContentLoaded", function () {
+  loadSettingsAndInitialize();
   initializeSiteSpeed();
 
-  // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
     chrome.runtime.openOptionsPage();
   });
 
-  // Power button toggle event listener
   document.querySelector("#disable").addEventListener("click", function () {
-    // Toggle based on current state
     const isCurrentlyEnabled = !this.classList.contains("disabled");
     toggleEnabled(!isCurrentlyEnabled, settingsSavedReloadMessage);
   });
 
-  // Initialize enabled state
   chrome.storage.sync.get({ enabled: true }, function (storage) {
     toggleEnabledUI(storage.enabled);
   });
 
   function toggleEnabled(enabled, callback) {
-    chrome.storage.sync.set(
-      {
-        enabled: enabled
-      },
-      function () {
-        toggleEnabledUI(enabled);
-        if (callback) callback(enabled);
-      }
-    );
+    chrome.storage.sync.set({ enabled: enabled }, function () {
+      toggleEnabledUI(enabled);
+      if (callback) callback(enabled);
+    });
   }
 
   function toggleEnabledUI(enabled) {
     const disableBtn = document.querySelector("#disable");
     disableBtn.classList.toggle("disabled", !enabled);
-
-    // Update tooltip
     disableBtn.title = enabled ? "Disable Extension" : "Enable Extension";
 
     const suffix = enabled ? "" : "_disabled";
@@ -59,100 +47,86 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // Notify background script of state change
     chrome.runtime.sendMessage({ type: 'EXTENSION_TOGGLE', enabled: enabled });
   }
 
   function settingsSavedReloadMessage(enabled) {
-    setStatusMessage(
-      `${enabled ? "Enabled" : "Disabled"}. Reload page.`
-    );
+    setStatusMessage(`${enabled ? "Enabled" : "Disabled"}. Reload page.`);
   }
 
   function setStatusMessage(str) {
-    const status_element = document.querySelector("#status");
-    status_element.classList.toggle("hide", false);
-    status_element.innerText = str;
+    const el = document.querySelector("#status");
+    el.classList.toggle("hide", false);
+    el.innerText = str;
   }
 
-  // Load settings and initialize UI
+  // Update hero speed display and active preset
+  function updateSpeedUI(speed) {
+    const display = document.getElementById("speed-display");
+    if (display) {
+      display.textContent = Number(speed).toFixed(2);
+    }
+
+    // Highlight matching preset
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      const btnSpeed = parseFloat(btn.dataset.speed);
+      btn.classList.toggle("active", Math.abs(btnSpeed - speed) < 0.01);
+    });
+  }
+
   function loadSettingsAndInitialize() {
     chrome.storage.sync.get(null, function (storage) {
-      // Find the step values from keyBindings
       let slowerStep = 0.1;
       let fasterStep = 0.1;
-      let resetSpeed = 1.0;
 
       if (storage.keyBindings && Array.isArray(storage.keyBindings)) {
         const slowerBinding = storage.keyBindings.find(kb => kb.action === "slower");
         const fasterBinding = storage.keyBindings.find(kb => kb.action === "faster");
         const fastBinding = storage.keyBindings.find(kb => kb.action === "fast");
 
-        if (slowerBinding && typeof slowerBinding.value === 'number') {
-          slowerStep = slowerBinding.value;
-        }
-        if (fasterBinding && typeof fasterBinding.value === 'number') {
-          fasterStep = fasterBinding.value;
-        }
-        if (fastBinding && typeof fastBinding.value === 'number') {
-          resetSpeed = fastBinding.value;
-        }
+        if (slowerBinding && typeof slowerBinding.value === 'number') slowerStep = slowerBinding.value;
+        if (fasterBinding && typeof fasterBinding.value === 'number') fasterStep = fasterBinding.value;
+        if (fastBinding && typeof fastBinding.value === 'number') preferredSpeed = fastBinding.value;
       }
 
-      // Update the UI with dynamic values
-      updateSpeedControlsUI(slowerStep, fasterStep, resetSpeed);
+      // Set button delta data
+      const decreaseBtn = document.querySelector("#speed-decrease");
+      if (decreaseBtn) decreaseBtn.dataset.delta = -slowerStep;
+      const increaseBtn = document.querySelector("#speed-increase");
+      if (increaseBtn) increaseBtn.dataset.delta = fasterStep;
 
-      // Initialize event listeners
-      initializeSpeedControls(slowerStep, fasterStep);
+      initializeSpeedControls();
+
+      // Query actual speed from the active tab
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: MessageTypes.GET_SITE_INFO }, function (response) {
+            const speed = (response && response.speed) || storage.lastSpeed || 1.0;
+            updateSpeedUI(speed);
+          });
+        } else {
+          updateSpeedUI(storage.lastSpeed || 1.0);
+        }
+      });
     });
   }
 
-  function updateSpeedControlsUI(slowerStep, fasterStep, resetSpeed) {
-    // Update decrease button
-    const decreaseBtn = document.querySelector("#speed-decrease");
-    if (decreaseBtn) {
-      decreaseBtn.dataset.delta = -slowerStep;
-      decreaseBtn.querySelector("span").textContent = `-${slowerStep}`;
-    }
-
-    // Update increase button  
-    const increaseBtn = document.querySelector("#speed-increase");
-    if (increaseBtn) {
-      increaseBtn.dataset.delta = fasterStep;
-      increaseBtn.querySelector("span").textContent = `+${fasterStep}`;
-    }
-
-    // Update reset button
-    const resetBtn = document.querySelector("#speed-reset");
-    if (resetBtn) {
-      resetBtn.textContent = resetSpeed.toString();
-    }
-  }
-
-  // Speed Control Functions
-  function initializeSpeedControls(slowerStep, fasterStep) {
-    // Set up speed control button listeners
+  function initializeSpeedControls() {
     document.querySelector("#speed-decrease").addEventListener("click", function () {
-      const delta = parseFloat(this.dataset.delta);
-      adjustSpeed(delta);
+      adjustSpeed(parseFloat(this.dataset.delta));
     });
 
     document.querySelector("#speed-increase").addEventListener("click", function () {
-      const delta = parseFloat(this.dataset.delta);
-      adjustSpeed(delta);
+      adjustSpeed(parseFloat(this.dataset.delta));
     });
 
-    document.querySelector("#speed-reset").addEventListener("click", function () {
-      // Set directly to preferred speed instead of toggling
-      const preferredSpeed = parseFloat(this.textContent);
+    document.getElementById("speed-display").addEventListener("click", function () {
       setSpeed(preferredSpeed);
     });
 
-    // Set up preset button listeners
     document.querySelectorAll(".preset-btn").forEach(btn => {
       btn.addEventListener("click", function () {
-        const speed = parseFloat(this.dataset.speed);
-        setSpeed(speed);
+        setSpeed(parseFloat(this.dataset.speed));
       });
     });
   }
@@ -164,6 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
           type: MessageTypes.SET_SPEED,
           payload: { speed: speed }
         });
+        updateSpeedUI(speed);
         updateSiteSpeedDisplay(speed);
       }
     });
@@ -176,10 +151,10 @@ document.addEventListener("DOMContentLoaded", function () {
           type: MessageTypes.ADJUST_SPEED,
           payload: { delta: delta }
         });
-        // Query actual speed after adjustment since we only know the delta
         setTimeout(function () {
           chrome.tabs.sendMessage(tabs[0].id, { type: MessageTypes.GET_SITE_INFO }, function (response) {
             if (response && response.speed) {
+              updateSpeedUI(response.speed);
               updateSiteSpeedDisplay(response.speed);
             }
           });
@@ -188,29 +163,15 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Update the per-site speed label display only (no storage writes)
   function updateSiteSpeedDisplay(speed) {
     const labelEl = document.getElementById("site-speed-label");
     const toggleBtn = document.getElementById("site-speed-toggle");
     if (!toggleBtn || !toggleBtn.classList.contains("active")) return;
-    const hostnameEl = document.getElementById("site-hostname");
-    const hostname = hostnameEl.textContent;
-    // Show live speed vs saved profile speed
+    const hostname = document.getElementById("site-hostname").textContent;
     chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
-      const profiles = storage.siteProfiles || {};
-      const savedSpeed = profiles[hostname]?.speed;
+      const savedSpeed = (storage.siteProfiles || {})[hostname]?.speed;
       if (savedSpeed !== undefined) {
-        labelEl.textContent = `Profile (${savedSpeed}x)`;
-      }
-    });
-  }
-
-  function resetSpeed() {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          type: MessageTypes.RESET_SPEED
-        });
+        labelEl.textContent = `Saved (${savedSpeed}x)`;
       }
     });
   }
@@ -221,11 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!tabs[0] || !tabs[0].url) return;
 
       let hostname;
-      try {
-        hostname = new URL(tabs[0].url).hostname;
-      } catch (e) {
-        return;
-      }
+      try { hostname = new URL(tabs[0].url).hostname; } catch (e) { return; }
 
       const hostnameEl = document.getElementById("site-hostname");
       const toggleBtn = document.getElementById("site-speed-toggle");
@@ -233,7 +190,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       hostnameEl.textContent = hostname;
 
-      // Check if there's already a site profile
       chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
         const profiles = storage.siteProfiles || {};
         const hasProfile = profiles[hostname] !== undefined;
@@ -241,7 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (hasProfile) {
           toggleBtn.classList.add("active");
           const savedSpeed = profiles[hostname].speed;
-          labelEl.textContent = savedSpeed !== undefined ? `Profile (${savedSpeed}x)` : 'Profile active';
+          labelEl.textContent = savedSpeed !== undefined ? `Saved (${savedSpeed}x)` : 'Profile active';
         } else {
           toggleBtn.classList.remove("active");
           labelEl.textContent = "Save for this site";
@@ -254,20 +210,18 @@ document.addEventListener("DOMContentLoaded", function () {
           const hasProfile = profiles[hostname] !== undefined;
 
           if (hasProfile) {
-            // Remove site profile
             delete profiles[hostname];
             chrome.storage.sync.set({ siteProfiles: profiles }, function () {
               toggleBtn.classList.remove("active");
               labelEl.textContent = "Save for this site";
             });
           } else {
-            // Create profile with current speed from the page
             chrome.tabs.sendMessage(tabs[0].id, { type: 'VSC_GET_SITE_INFO' }, function (response) {
               const currentSpeed = (response && response.speed) || 1.0;
               profiles[hostname] = { speed: currentSpeed };
               chrome.storage.sync.set({ siteProfiles: profiles }, function () {
                 toggleBtn.classList.add("active");
-                labelEl.textContent = `Profile (${currentSpeed}x)`;
+                labelEl.textContent = `Saved (${currentSpeed}x)`;
               });
             });
           }

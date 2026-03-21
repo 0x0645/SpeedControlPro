@@ -20,129 +20,131 @@ class ShadowDOMManager {
     const style = document.createElement('style');
     style.textContent = `
       * {
-        line-height: 1.8em;
-        font-family: sans-serif;
-        font-size: 13px;
+        line-height: 1.6;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 12px;
+        box-sizing: border-box;
       }
-      
+
       :host(:hover) #controls {
-        display: inline-block;
+        display: inline-flex;
       }
-      
-      /* Hide shadow DOM content for different hiding scenarios */
+
       :host(.vsc-hidden) #controller,
       :host(.vsc-nosource) #controller {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
       }
-      
-      /* Override hiding for manual controllers (unless explicitly hidden) */
+
       :host(.vsc-manual:not(.vsc-hidden)) #controller {
-        display: block !important;
+        display: inline-flex !important;
         visibility: visible !important;
         opacity: ${opacity} !important;
       }
-      
-      /* Show shadow DOM content when host has vsc-show class (highest priority) */
+
       :host(.vsc-show) #controller {
-        display: block !important;
+        display: inline-flex !important;
         visibility: visible !important;
         opacity: ${opacity} !important;
       }
-      
+
       #controller {
         position: absolute;
         top: 0;
         left: 0;
-        background: black;
-        color: white;
+        display: inline-flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: rgba(255, 255, 255, 0.95);
         border-radius: 6px;
-        padding: 4px;
-        margin: 10px 10px 10px 15px;
+        padding: 3px 4px;
+        margin: 8px 8px 8px 12px;
         cursor: default;
         z-index: 9999999;
         white-space: nowrap;
+        transition: opacity 0.15s ease;
       }
-      
+
       #controller:hover {
-        opacity: 0.7;
+        opacity: 0.85;
       }
-      
-      #controller:hover>.draggable {
-        margin-right: 0.8em;
-      }
-      
+
       #controls {
         display: none;
-        vertical-align: middle;
+        align-items: center;
+        gap: 1px;
+        margin-left: 2px;
       }
-      
+
       #controller.dragging {
         cursor: -webkit-grabbing;
-        opacity: 0.7;
+        opacity: 0.85;
       }
-      
+
       #controller.dragging #controls {
-        display: inline-block;
+        display: inline-flex;
       }
-      
+
       .draggable {
         cursor: -webkit-grab;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 2.8em;
+        min-width: 2.4em;
         height: 1.4em;
         text-align: center;
-        vertical-align: middle;
-        box-sizing: border-box;
+        font-weight: 600;
+        letter-spacing: -0.01em;
       }
-      
+
       .draggable:active {
         cursor: -webkit-grabbing;
       }
-      
+
       button {
-        opacity: 1;
         cursor: pointer;
-        color: black;
-        background: white;
-        font-weight: normal;
-        border-radius: 5px;
-        padding: 1px 5px 3px 5px;
+        color: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.1);
+        font-weight: 500;
+        border-radius: 4px;
+        padding: 2px 6px;
         font-size: inherit;
         line-height: inherit;
-        border: 0px solid white;
-        font-family: "Lucida Console", Monaco, monospace;
-        margin: 0px 2px 2px 2px;
-        transition: background 0.2s, color 0.2s;
+        border: none;
+        font-family: inherit;
+        margin: 0;
+        transition: background 0.12s ease, color 0.12s ease;
       }
-      
+
       button:focus {
         outline: 0;
       }
-      
+
       button:hover {
-        opacity: 1;
-        background: #2196f3;
+        background: rgba(255, 255, 255, 0.25);
         color: #ffffff;
       }
-      
+
       button:active {
-        background: #2196f3;
+        background: rgba(255, 255, 255, 0.35);
         color: #ffffff;
-        font-weight: bold;
       }
-      
+
       button.rw {
-        opacity: 0.65;
+        opacity: 0.7;
       }
-      
+
       button.hideButton {
-        opacity: 0.65;
-        margin-left: 8px;
-        margin-right: 2px;
+        opacity: 0.6;
+        margin-left: 4px;
+        font-size: 11px;
+      }
+
+      button.hideButton:hover {
+        opacity: 1;
       }
     `;
     shadow.appendChild(style);
