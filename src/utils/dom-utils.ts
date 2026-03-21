@@ -83,7 +83,7 @@ export function initializeWhenReady(
 }
 
 export function findMediaElements(
-  node: Element | Document | null,
+  node: Element | Document | ShadowRoot | null,
   audioEnabled = false
 ): HTMLMediaElement[] {
   if (!node) {

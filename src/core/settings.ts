@@ -7,6 +7,7 @@ import { logger } from '../utils/logger';
 import { DEFAULT_SETTINGS } from '../utils/constants';
 import { StorageManager } from './storage-manager';
 import type { ExtensionSettings, KeyBinding, SiteProfile } from '../types/settings';
+import type { StorageSnapshot } from '../types/contracts';
 import { normalizeHostname } from '../utils/hostname';
 
 type ResolvedProfile = SiteProfile & {
@@ -82,14 +83,14 @@ export class VideoSpeedConfig {
           this.pendingSave = null;
           this.saveTimer = null;
 
-          await StorageManager.set({ ...this.settings, lastSpeed: speedToSave });
+          await StorageManager.set({ ...this.settings, lastSpeed: speedToSave ?? this.settings.lastSpeed } as StorageSnapshot);
           logger.info('Debounced speed setting saved successfully');
         }, this.SAVE_DELAY);
 
         return;
       }
 
-      await StorageManager.set(this.settings);
+      await StorageManager.set(this.settings as StorageSnapshot);
 
       if (newSettings.logLevel !== undefined) {
         logger.setVerbosity(this.settings.logLevel);

@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { findMediaElements, findShadowMedia } from '../utils/dom-utils';
+import { logger } from '../utils/logger';
 
-class MediaElementObserver {
+export class MediaElementObserver {
   config: any;
   siteHandler: any;
 
@@ -26,13 +27,13 @@ class MediaElementObserver {
   scanForMedia(document: Document | Element): HTMLMediaElement[] {
     const mediaTagSelector = this.getMediaSelector();
     const mediaElements = [
-      ...window.VSC.DomUtils.findMediaElements(document, this.config.settings.audioBoolean),
-      ...window.VSC.DomUtils.findShadowMedia(document, mediaTagSelector),
+      ...findMediaElements(document, this.config.settings.audioBoolean),
+      ...findShadowMedia(document, mediaTagSelector),
       ...this.siteHandler.detectSpecialVideos(document),
     ] as HTMLMediaElement[];
     const filteredMedia = this.filterIgnoredMedia(mediaElements);
 
-    window.VSC.logger.info(
+    logger.info(
       `Found ${filteredMedia.length} media elements (${mediaElements.length} total, ${mediaElements.length - filteredMedia.length} filtered out)`
     );
     return filteredMedia;
@@ -55,13 +56,13 @@ class MediaElementObserver {
 
       const filteredMedia = this.filterIgnoredMedia(mediaElements);
 
-      window.VSC.logger.info(
+      logger.info(
         `Light scan found ${filteredMedia.length} media elements (${mediaElements.length} total, ${mediaElements.length - filteredMedia.length} filtered out)`
       );
       return filteredMedia;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      window.VSC.logger.error(`Light media scan failed: ${message}`);
+      logger.error(`Light media scan failed: ${message}`);
       return [];
     }
   }
@@ -76,11 +77,11 @@ class MediaElementObserver {
         if (childDocument) {
           const iframeMedia = this.scanForMedia(childDocument);
           mediaElements.push(...iframeMedia);
-          window.VSC.logger.debug(`Found ${iframeMedia.length} media elements in iframe`);
+          logger.debug(`Found ${iframeMedia.length} media elements in iframe`);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        window.VSC.logger.debug(`Cannot access iframe content (cross-origin): ${message}`);
+        logger.debug(`Cannot access iframe content (cross-origin): ${message}`);
       }
     });
 
@@ -96,12 +97,12 @@ class MediaElementObserver {
       try {
         const containers = document.querySelectorAll(selector);
         containers.forEach((container) => {
-          const containerMedia = window.VSC.DomUtils.findMediaElements(container, audioEnabled);
+          const containerMedia = findMediaElements(container, audioEnabled);
           mediaElements.push(...containerMedia);
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        window.VSC.logger.warn(`Invalid selector "${selector}": ${message}`);
+        logger.warn(`Invalid selector "${selector}": ${message}`);
       }
     });
 
@@ -115,23 +116,23 @@ class MediaElementObserver {
     allMedia.push(...this.scanIframes(document));
 
     const uniqueMedia = this.getUniqueMedia(allMedia);
-    window.VSC.logger.info(`Total unique media elements found: ${uniqueMedia.length}`);
+    logger.info(`Total unique media elements found: ${uniqueMedia.length}`);
     return uniqueMedia;
   }
 
   isValidMediaElement(media: HTMLMediaElement): boolean {
     if (!media.isConnected) {
-      window.VSC.logger.debug('Video not in DOM');
+      logger.debug('Video not in DOM');
       return false;
     }
 
     if (media.tagName === 'AUDIO' && !this.config.settings.audioBoolean) {
-      window.VSC.logger.debug('Audio element rejected - audioBoolean disabled');
+      logger.debug('Audio element rejected - audioBoolean disabled');
       return false;
     }
 
     if (this.siteHandler.shouldIgnoreVideo(media)) {
-      window.VSC.logger.debug('Video ignored by site handler');
+      logger.debug('Video ignored by site handler');
       return false;
     }
 
@@ -141,16 +142,16 @@ class MediaElementObserver {
   shouldStartHidden(media: HTMLMediaElement): boolean {
     if (media.tagName === 'AUDIO') {
       if (!this.config.settings.audioBoolean) {
-        window.VSC.logger.debug('Audio controller hidden - audio support disabled');
+        logger.debug('Audio controller hidden - audio support disabled');
         return true;
       }
 
       if ((media as any).disabled || media.style.pointerEvents === 'none') {
-        window.VSC.logger.debug('Audio controller hidden - element disabled or no pointer events');
+        logger.debug('Audio controller hidden - element disabled or no pointer events');
         return true;
       }
 
-      window.VSC.logger.debug(
+      logger.debug(
         'Audio controller will start visible (audio elements can be invisible but functional)'
       );
       return false;
@@ -158,7 +159,7 @@ class MediaElementObserver {
 
     const style = window.getComputedStyle(media);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-      window.VSC.logger.debug('Video not visible, controller will start hidden');
+      logger.debug('Video not visible, controller will start hidden');
       return true;
     }
 
@@ -170,5 +171,3 @@ class MediaElementObserver {
     return positioning.targetParent || media.parentElement;
   }
 }
-
-window.VSC.MediaElementObserver = MediaElementObserver;

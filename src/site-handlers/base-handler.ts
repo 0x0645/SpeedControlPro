@@ -1,9 +1,9 @@
 import { logger } from '../utils/logger';
 
 export type ControllerPosition = {
-  insertionPoint: any;
-  insertionMethod: 'firstChild' | 'beforeParent' | 'afterParent';
-  targetParent: any;
+  insertionPoint: Element | ParentNode | null;
+  insertionMethod: string;
+  targetParent: Element | ParentNode | null;
 };
 
 export class BaseSiteHandler {

@@ -1,16 +1,10 @@
 // @ts-nocheck
 /**
  * Options page - depends on core VSC modules
- * Import required dependencies that are normally bundled in inject context
  */
-
-// Core utilities and constants - must load first
-import '../../utils/constants';
-import '../../utils/logger';
-
-// Storage and settings - depends on utils
-import '../../core/storage-manager';
-import '../../core/settings';
+import { DEFAULT_SETTINGS, CUSTOM_ACTIONS_NO_VALUES, regStrip } from '../../utils/constants';
+import { VideoSpeedConfig, videoSpeedConfig } from '../../core/settings';
+import { StorageManager } from '../../core/storage-manager';
 import {
   ACTION_OPTIONS,
   BLACKLISTED_KEYCODES as IMPORTED_BLACKLISTED_KEYCODES,
@@ -21,8 +15,7 @@ import {
 import { buildProfileKeybindingRow, cloneGlobalBindings } from './options-profile-utils';
 import { normalizeHostname } from '../../utils/hostname';
 
-// Initialize global namespace for options page
-window.VSC = window.VSC || {};
+let config = videoSpeedConfig;
 
 // Debounce utility function
 function debounce(func, wait) {
@@ -244,7 +237,7 @@ function validate() {
   }
 
   blacklist.value.split('\n').forEach((match) => {
-    match = match.replace(window.VSC.Constants.regStrip, '');
+    match = match.replace(regStrip, '');
 
     if (match.startsWith('/')) {
       try {
@@ -320,8 +313,8 @@ async function save_options() {
     var blacklist = document.getElementById('blacklist').value;
 
     // Ensure VideoSpeedConfig singleton is initialized
-    if (!window.VSC.videoSpeedConfig) {
-      window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
+    if (!config) {
+      config = new VideoSpeedConfig();
     }
 
     // Use VideoSpeedConfig to save settings
@@ -334,11 +327,11 @@ async function save_options() {
       controllerButtonSize: controllerButtonSize,
       logLevel: logLevel,
       keyBindings: keyBindings,
-      blacklist: blacklist.replace(window.VSC.Constants.regStrip, ''),
+      blacklist: blacklist.replace(regStrip, ''),
     };
 
     // Save with optimistic UI (like old version)
-    await window.VSC.videoSpeedConfig.save(settingsToSave);
+    await config.save(settingsToSave);
 
     status.textContent = 'Options saved';
     status.classList.add('success');
@@ -362,13 +355,13 @@ async function save_options() {
 async function restore_options() {
   try {
     // Ensure VideoSpeedConfig singleton is initialized
-    if (!window.VSC.videoSpeedConfig) {
-      window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
+    if (!config) {
+      config = new VideoSpeedConfig();
     }
 
     // Load settings using VideoSpeedConfig
-    await window.VSC.videoSpeedConfig.load();
-    const storage = window.VSC.videoSpeedConfig.settings;
+    await config.load();
+    const storage = config.settings;
 
     document.getElementById('rememberSpeed').checked = storage.rememberSpeed;
     document.getElementById('forceLastSavedSpeed').checked = storage.forceLastSavedSpeed;
@@ -380,7 +373,7 @@ async function restore_options() {
     document.getElementById('blacklist').value = storage.blacklist;
 
     // Process key bindings
-    const keyBindings = storage.keyBindings || window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
+    const keyBindings = storage.keyBindings || DEFAULT_SETTINGS.keyBindings;
 
     for (let i in keyBindings) {
       var item = keyBindings[i];
@@ -391,7 +384,7 @@ async function restore_options() {
           item['key'] = 86; // V
         }
 
-        if (window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(item['action'])) {
+        if (CUSTOM_ACTIONS_NO_VALUES.includes(item['action'])) {
           const valueInput = document.querySelector('#' + item['action'] + ' .customValue');
           if (valueInput) {
             valueInput.style.display = 'none';
@@ -417,7 +410,7 @@ async function restore_options() {
         const dom = document.querySelector('.customs:last-of-type');
         dom.querySelector('.customDo').value = item['action'];
 
-        if (window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(item['action'])) {
+        if (CUSTOM_ACTIONS_NO_VALUES.includes(item['action'])) {
           const valueInput = dom.querySelector('.customValue');
           if (valueInput) {
             valueInput.style.display = 'none';
@@ -472,15 +465,15 @@ async function restore_defaults() {
     status.classList.add('show');
 
     // Clear all storage
-    await window.VSC.StorageManager.clear();
+    await StorageManager.clear();
 
     // Ensure VideoSpeedConfig singleton is initialized
-    if (!window.VSC.videoSpeedConfig) {
-      window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
+    if (!config) {
+      config = new VideoSpeedConfig();
     }
 
     // Then save fresh defaults
-    await window.VSC.videoSpeedConfig.save(window.VSC.Constants.DEFAULT_SETTINGS);
+    await config.save(DEFAULT_SETTINGS);
 
     // Remove custom shortcuts from UI
     document.querySelectorAll('.removeParent').forEach((button) => button.click());
@@ -542,11 +535,11 @@ function show_experimental() {
       const rowId = row.id;
       if (
         rowId &&
-        window.VSC.videoSpeedConfig &&
-        window.VSC.videoSpeedConfig.settings.keyBindings
+        config &&
+        config.settings.keyBindings
       ) {
         // For predefined shortcuts
-        const savedBinding = window.VSC.videoSpeedConfig.settings.keyBindings.find(
+        const savedBinding = config.settings.keyBindings.find(
           (kb) => kb.action === rowId
         );
         if (savedBinding && savedBinding.force !== undefined) {
@@ -558,7 +551,7 @@ function show_experimental() {
           row.parentElement.querySelectorAll('.row.customs:not([id])')
         ).indexOf(row);
         const customBindings =
-          window.VSC.videoSpeedConfig?.settings.keyBindings?.filter((kb) => !kb.predefined) || [];
+          config?.settings.keyBindings?.filter((kb) => !kb.predefined) || [];
         if (customBindings[rowIndex] && customBindings[rowIndex].force !== undefined) {
           newSelect.value = String(customBindings[rowIndex].force);
         }
@@ -708,7 +701,7 @@ function renderSiteProfileList() {
         const kbRows = hasCustomKb
           ? profile.keyBindings
               .map((kb, i) =>
-                buildProfileKeybindingRow(kb, i, window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES)
+                buildProfileKeybindingRow(kb, i, CUSTOM_ACTIONS_NO_VALUES)
               )
               .join('')
           : '';
@@ -803,9 +796,9 @@ function attachProfileInputHandlers(listEl) {
 
       await ensureConfig();
       if (val === '') {
-        await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: null });
+        await config.setSiteProfile(host, { [key]: null });
       } else {
-        await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: parseFloat(val) });
+        await config.setSiteProfile(host, { [key]: parseFloat(val) });
       }
       renderSiteProfileList();
     });
@@ -821,7 +814,7 @@ function attachProfileCheckboxHandlers(listEl) {
       this.dataset.override = 'true';
 
       await ensureConfig();
-      await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: this.checked });
+      await config.setSiteProfile(host, { [key]: this.checked });
       renderSiteProfileList();
     });
   });
@@ -832,7 +825,7 @@ function attachProfileRemoveHandlers(listEl) {
     btn.addEventListener('click', async function () {
       const host = this.dataset.hostname;
       await ensureConfig();
-      await window.VSC.videoSpeedConfig.removeSiteProfile(host);
+      await config.removeSiteProfile(host);
       renderSiteProfileList();
     });
   });
@@ -847,11 +840,11 @@ function attachProfileKeybindingHandlers(listEl) {
 
       await ensureConfig();
       const globalKb =
-        window.VSC.videoSpeedConfig.settings.keyBindings ||
-        window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
+        config.settings.keyBindings ||
+        DEFAULT_SETTINGS.keyBindings;
       // Deep copy global bindings as starting point
       const copied = cloneGlobalBindings(globalKb);
-      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: copied });
+      await config.setSiteProfile(host, { keyBindings: copied });
       renderSiteProfileList();
     });
   });
@@ -863,7 +856,7 @@ function attachProfileKeybindingHandlers(listEl) {
       const host = entry.dataset.hostname;
 
       await ensureConfig();
-      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: null });
+      await config.setSiteProfile(host, { keyBindings: null });
       renderSiteProfileList();
     });
   });
@@ -875,10 +868,10 @@ function attachProfileKeybindingHandlers(listEl) {
       const host = entry.dataset.hostname;
 
       await ensureConfig();
-      const profile = window.VSC.videoSpeedConfig.getSiteProfile(host) || {};
+      const profile = config.getSiteProfile(host) || {};
       const kbs = Array.isArray(profile.keyBindings) ? [...profile.keyBindings] : [];
       kbs.push({ action: 'slower', key: null, value: 0.1, force: false });
-      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: kbs });
+      await config.setSiteProfile(host, { keyBindings: kbs });
       renderSiteProfileList();
     });
   });
@@ -891,10 +884,10 @@ function attachProfileKeybindingHandlers(listEl) {
       const index = parseInt(this.closest('.profile-kb-row').dataset.index);
 
       await ensureConfig();
-      const profile = window.VSC.videoSpeedConfig.getSiteProfile(host) || {};
+      const profile = config.getSiteProfile(host) || {};
       const kbs = Array.isArray(profile.keyBindings) ? [...profile.keyBindings] : [];
       kbs.splice(index, 1);
-      await window.VSC.videoSpeedConfig.setSiteProfile(host, {
+      await config.setSiteProfile(host, {
         keyBindings: kbs.length > 0 ? kbs : null,
       });
       renderSiteProfileList();
@@ -945,7 +938,7 @@ function attachProfileKeybindingHandlers(listEl) {
       // Toggle value input visibility
       const row = this.closest('.profile-kb-row');
       const valueInput = row.querySelector('.profile-kb-value');
-      const noValue = window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(this.value);
+      const noValue = CUSTOM_ACTIONS_NO_VALUES.includes(this.value);
       valueInput.style.display = noValue ? 'none' : '';
       saveProfileKb(this);
     });
@@ -975,14 +968,14 @@ async function saveProfileKb(triggerEl) {
   });
 
   await ensureConfig();
-  await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: kbs });
+  await config.setSiteProfile(host, { keyBindings: kbs });
   renderSiteProfileList();
 }
 
 async function ensureConfig() {
-  if (!window.VSC.videoSpeedConfig) {
-    window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
-    await window.VSC.videoSpeedConfig.load();
+  if (!config) {
+    config = new VideoSpeedConfig();
+    await config.load();
   }
 }
 
@@ -1003,19 +996,19 @@ async function addSiteProfile() {
 
   await ensureConfig();
   // Create an empty profile shell so every setting continues inheriting global defaults
-  if (!window.VSC.videoSpeedConfig.settings.siteProfiles) {
-    window.VSC.videoSpeedConfig.settings.siteProfiles = {};
+  if (!config.settings.siteProfiles) {
+    config.settings.siteProfiles = {};
   }
 
-  if (window.VSC.videoSpeedConfig.settings.siteProfiles[hostname]) {
+  if (config.settings.siteProfiles[hostname]) {
     showStatusMessage(`A profile for ${hostname} already exists.`, 'error', 3000);
     hostnameInput.value = '';
     return;
   }
 
-  window.VSC.videoSpeedConfig.settings.siteProfiles[hostname] = {};
-  await window.VSC.videoSpeedConfig.save({
-    siteProfiles: window.VSC.videoSpeedConfig.settings.siteProfiles,
+  config.settings.siteProfiles[hostname] = {};
+  await config.save({
+    siteProfiles: config.settings.siteProfiles,
   });
 
   hostnameInput.value = '';
@@ -1094,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.addEventListener('change', (event) => {
     eventCaller(event, 'customDo', function () {
       const valueInput = event.target.nextElementSibling.nextElementSibling;
-      if (window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(event.target.value)) {
+      if (CUSTOM_ACTIONS_NO_VALUES.includes(event.target.value)) {
         valueInput.style.display = 'none';
         valueInput.value = 0;
       } else {

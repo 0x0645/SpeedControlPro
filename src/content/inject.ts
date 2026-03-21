@@ -1,53 +1,41 @@
+import { VideoController } from '../core/video-controller';
+import { ActionHandler } from '../core/action-handler';
+import { EventManager } from '../utils/event-manager';
+import { logger } from '../utils/logger';
+import { MESSAGE_TYPES } from '../utils/message-types';
+import { initializeWhenReady } from '../utils/dom-utils';
+import { siteHandlerManager } from '../site-handlers/index';
+import { VideoMutationObserver } from '../observers/mutation-observer';
+import { MediaElementObserver } from '../observers/media-observer';
+import { videoSpeedConfig } from '../core/settings';
+import { stateManager } from '../core/state-manager';
+
+let moduleInitialized = false;
+
 class VideoSpeedExtension {
-  config: any = null;
-  actionHandler: any = null;
-  eventManager: any = null;
-  mutationObserver: any = null;
-  mediaObserver: any = null;
+  config = videoSpeedConfig;
+  actionHandler: InstanceType<typeof ActionHandler> | null = null;
+  eventManager: InstanceType<typeof EventManager> | null = null;
+  mutationObserver: InstanceType<typeof VideoMutationObserver> | null = null;
+  mediaObserver: InstanceType<typeof MediaElementObserver> | null = null;
   initialized = false;
   pendingMediaControllers = new WeakSet<HTMLMediaElement>();
   scannedDocuments = new WeakSet<Document>();
-  VideoController: any;
-  ActionHandler: any;
-  EventManager: any;
-  logger: any;
-  initializeWhenReady: any;
-  siteHandlerManager: any;
-  VideoMutationObserver: any;
-  MediaElementObserver: any;
-  MESSAGE_TYPES: any;
-
-  bindGlobals(): void {
-    this.VideoController = window.VSC.VideoController;
-    this.ActionHandler = window.VSC.ActionHandler;
-    this.EventManager = window.VSC.EventManager;
-    this.logger = window.VSC.logger;
-    this.initializeWhenReady = window.VSC.DomUtils.initializeWhenReady;
-    this.siteHandlerManager = window.VSC.siteHandlerManager;
-    this.VideoMutationObserver = window.VSC.VideoMutationObserver;
-    this.MediaElementObserver = window.VSC.MediaElementObserver;
-    this.MESSAGE_TYPES = window.VSC.Constants.MESSAGE_TYPES;
-  }
 
   async loadConfig(): Promise<void> {
-    this.config = window.VSC.videoSpeedConfig;
     await this.config.load();
   }
 
   initializeServices(): void {
-    this.siteHandlerManager.initialize(document);
-    this.eventManager = new this.EventManager(this.config, null);
-    this.actionHandler = new this.ActionHandler(this.config, this.eventManager);
+    siteHandlerManager.initialize(document);
+    this.eventManager = new EventManager(this.config, null);
+    this.actionHandler = new ActionHandler(this.config, this.eventManager);
     this.eventManager.actionHandler = this.actionHandler;
     this.setupObservers();
   }
 
   getAllMediaElements(): HTMLMediaElement[] {
-    return window.VSC.stateManager ? window.VSC.stateManager.getAllMediaElements() : [];
-  }
-
-  getStateManager(): any {
-    return window.VSC.stateManager || null;
+    return stateManager.getAllMediaElements();
   }
 
   getMediaForSpeedRead(): HTMLMediaElement[] {
@@ -67,13 +55,13 @@ class VideoSpeedExtension {
 
   getRepresentativePlaybackRate(videos: HTMLMediaElement[]): number {
     if (videos.length === 0) {
-      return window.VSC.videoSpeedConfig?.settings?.lastSpeed || 1.0;
+      return videoSpeedConfig.settings?.lastSpeed || 1.0;
     }
     const playing = videos.filter((v) => !v.paused);
     const candidates = playing.length > 0 ? playing : videos;
     const rates = candidates.map((v) => v.playbackRate).filter((r) => r >= 0.07);
     if (rates.length === 0) {
-      return window.VSC.videoSpeedConfig?.settings?.lastSpeed || 1.0;
+      return videoSpeedConfig.settings?.lastSpeed || 1.0;
     }
     return Math.max(...rates);
   }
@@ -84,7 +72,7 @@ class VideoSpeedExtension {
 
   postSiteInfo(videos: HTMLMediaElement[]): void {
     const hostname = location.hostname;
-    const profile = window.VSC.videoSpeedConfig?.getSiteProfile(hostname);
+    const profile = videoSpeedConfig.getSiteProfile(hostname);
 
     window.postMessage(
       {
@@ -110,37 +98,37 @@ class VideoSpeedExtension {
   setAbsoluteSpeed(videos: HTMLMediaElement[], targetSpeed: number): void {
     this.forEachMedia(videos, (video) => {
       if ((video as any).vsc) {
-        this.actionHandler.adjustSpeed(video, targetSpeed);
+        this.actionHandler!.adjustSpeed(video, targetSpeed);
       } else {
         video.playbackRate = targetSpeed;
       }
     });
 
-    window.VSC.logger?.debug(`Set speed to ${targetSpeed} on ${videos.length} media elements`);
+    logger.debug(`Set speed to ${targetSpeed} on ${videos.length} media elements`);
   }
 
   adjustRelativeSpeed(videos: HTMLMediaElement[], delta: number): void {
     this.forEachMedia(videos, (video) => {
       if ((video as any).vsc) {
-        this.actionHandler.adjustSpeed(video, delta, { relative: true });
+        this.actionHandler!.adjustSpeed(video, delta, { relative: true });
       } else {
         video.playbackRate = Math.min(Math.max(video.playbackRate + delta, 0.07), 16);
       }
     });
 
-    window.VSC.logger?.debug(`Adjusted speed by ${delta} on ${videos.length} media elements`);
+    logger.debug(`Adjusted speed by ${delta} on ${videos.length} media elements`);
   }
 
   resetMediaSpeed(videos: HTMLMediaElement[]): void {
     this.forEachMedia(videos, (video) => {
       if ((video as any).vsc) {
-        this.actionHandler.resetSpeed(video, 1.0);
+        this.actionHandler!.resetSpeed(video, 1.0);
       } else {
         video.playbackRate = 1.0;
       }
     });
 
-    window.VSC.logger?.debug(`Reset speed on ${videos.length} media elements`);
+    logger.debug(`Reset speed on ${videos.length} media elements`);
   }
 
   handleRuntimeMessage(message: any): void {
@@ -151,25 +139,25 @@ class VideoSpeedExtension {
     const videos = this.getAllMediaElements();
 
     switch (message.type) {
-      case this.MESSAGE_TYPES.SET_SPEED:
+      case MESSAGE_TYPES.SET_SPEED:
         if (message.payload && typeof message.payload.speed === 'number') {
           this.setAbsoluteSpeed(videos, message.payload.speed);
         }
         break;
-      case this.MESSAGE_TYPES.ADJUST_SPEED:
+      case MESSAGE_TYPES.ADJUST_SPEED:
         if (message.payload && typeof message.payload.delta === 'number') {
           this.adjustRelativeSpeed(videos, message.payload.delta);
         }
         break;
-      case this.MESSAGE_TYPES.RESET_SPEED:
+      case MESSAGE_TYPES.RESET_SPEED:
         this.resetMediaSpeed(videos);
         break;
-      case this.MESSAGE_TYPES.TOGGLE_DISPLAY:
+      case MESSAGE_TYPES.TOGGLE_DISPLAY:
         if (this.actionHandler) {
           this.actionHandler.runAction('display', null, null);
         }
         break;
-      case this.MESSAGE_TYPES.GET_SITE_INFO: {
+      case MESSAGE_TYPES.GET_SITE_INFO: {
         const mediaForRead = this.getMediaForSpeedRead();
         this.postSiteInfo(mediaForRead);
         break;
@@ -192,8 +180,7 @@ class VideoSpeedExtension {
   }
 
   hasActiveController(video: HTMLMediaElement): boolean {
-    const stateManager = this.getStateManager();
-    return Boolean((video as any)?.vsc) || Boolean(stateManager?.hasMediaElement(video));
+    return Boolean((video as any)?.vsc) || Boolean(stateManager.hasMediaElement(video));
   }
 
   isPendingController(video: HTMLMediaElement): boolean {
@@ -216,9 +203,9 @@ class VideoSpeedExtension {
     this.markControllerPending(video);
 
     try {
-      (video as any).vsc = new this.VideoController(
+      (video as any).vsc = new VideoController(
         video,
-        parent,
+        parent as HTMLElement | null,
         this.config,
         this.actionHandler,
         shouldStartHidden
@@ -257,43 +244,42 @@ class VideoSpeedExtension {
 
   async initialize(): Promise<void> {
     try {
-      this.bindGlobals();
-      this.logger.info('Video Speed Controller starting...');
+      logger.info('Video Speed Controller starting...');
       await this.loadConfig();
       this.initializeServices();
 
-      this.initializeWhenReady(document, (doc: Document) => {
+      initializeWhenReady(document, (doc: Document) => {
         this.initializeDocument(doc);
       });
 
-      this.logger.info('Video Speed Controller initialized successfully');
+      logger.info('Video Speed Controller initialized successfully');
       this.initialized = true;
     } catch (error) {
       const err = error as Error;
-      console.error(`❌ Failed to initialize Video Speed Controller: ${err.message}`);
-      console.error('📋 Full error details:', error);
-      console.error('🔍 Error stack:', err.stack);
+      console.error(`Failed to initialize Video Speed Controller: ${err.message}`);
+      console.error('Full error details:', error);
+      console.error('Error stack:', err.stack);
     }
   }
 
   initializeDocument(document: Document): void {
     try {
-      if (window.VSC.initialized) {
+      if (moduleInitialized) {
         return;
       }
 
-      window.VSC.initialized = true;
+      moduleInitialized = true;
       this.applyDomainStyles(document);
-      this.eventManager.setupEventListeners(document);
+      this.eventManager!.setupEventListeners(document);
       if (document !== window.document) {
         this.setupDocumentCSS(document);
       }
 
       this.deferExpensiveOperations(document);
-      this.logger.debug('Document initialization completed');
+      logger.debug('Document initialization completed');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to initialize document: ${message}`);
+      logger.error(`Failed to initialize document: ${message}`);
     }
   }
 
@@ -302,13 +288,13 @@ class VideoSpeedExtension {
       try {
         if (this.mutationObserver) {
           this.mutationObserver.start(document);
-          this.logger.debug('Mutation observer started for document');
+          logger.debug('Mutation observer started for document');
         }
 
         this.deferredMediaScan(document);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to complete deferred operations: ${message}`);
+        logger.error(`Failed to complete deferred operations: ${message}`);
       }
     };
 
@@ -318,17 +304,17 @@ class VideoSpeedExtension {
   deferredMediaScan(document: Document): void {
     const performChunkedScan = () => {
       try {
-        const lightMedia = this.mediaObserver.scanForMediaLight(document) as HTMLMediaElement[];
+        const lightMedia = this.mediaObserver!.scanForMediaLight(document) as HTMLMediaElement[];
         const attachedCount = this.attachControllersToMedia(lightMedia);
 
-        this.logger.info(`Attached controllers to ${attachedCount} media elements (light scan)`);
+        logger.info(`Attached controllers to ${attachedCount} media elements (light scan)`);
 
         if (attachedCount === 0 && this.shouldRunComprehensiveScan(document)) {
           this.scheduleComprehensiveScan(document);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to scan media elements: ${message}`);
+        logger.error(`Failed to scan media elements: ${message}`);
       }
     };
 
@@ -338,13 +324,13 @@ class VideoSpeedExtension {
   scheduleComprehensiveScan(document: Document): void {
     globalThis.setTimeout(() => {
       try {
-        const comprehensiveMedia = this.mediaObserver.scanAll(document) as HTMLMediaElement[];
+        const comprehensiveMedia = this.mediaObserver!.scanAll(document) as HTMLMediaElement[];
         const attachedCount = this.attachControllersToMedia(comprehensiveMedia);
 
-        this.logger.info(`Comprehensive scan attached ${attachedCount} additional media elements`);
+        logger.info(`Comprehensive scan attached ${attachedCount} additional media elements`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed comprehensive media scan: ${message}`);
+        logger.error(`Failed comprehensive media scan: ${message}`);
       }
     }, 1000);
   }
@@ -357,13 +343,13 @@ class VideoSpeedExtension {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to apply domain styles: ${message}`);
+      logger.error(`Failed to apply domain styles: ${message}`);
     }
   }
 
   setupObservers(): void {
-    this.mediaObserver = new this.MediaElementObserver(this.config, this.siteHandlerManager);
-    this.mutationObserver = new this.VideoMutationObserver(
+    this.mediaObserver = new MediaElementObserver(this.config, siteHandlerManager);
+    this.mutationObserver = new VideoMutationObserver(
       this.config,
       (video: HTMLMediaElement, parent: Node | null) => this.onVideoFound(video, parent),
       (video: HTMLMediaElement) => this.onVideoRemoved(video),
@@ -374,45 +360,44 @@ class VideoSpeedExtension {
   onVideoFound(video: HTMLMediaElement, parent: Node | null): void {
     try {
       if (this.mediaObserver && !this.mediaObserver.isValidMediaElement(video)) {
-        this.logger.debug('Video element is not valid for controller attachment');
+        logger.debug('Video element is not valid for controller attachment');
         return;
       }
 
       if ((video as any).vsc) {
-        this.logger.debug('Video already has controller attached');
+        logger.debug('Video already has controller attached');
         return;
       }
 
       if (this.isPendingController(video)) {
-        this.logger.debug('Video controller attachment already pending');
+        logger.debug('Video controller attachment already pending');
         return;
       }
 
       const shouldStartHidden = this.mediaObserver
         ? this.mediaObserver.shouldStartHidden(video)
         : false;
-      this.logger.debug(
-        'Attaching controller to new video element',
-        shouldStartHidden ? '(starting hidden)' : ''
+      logger.debug(
+        `Attaching controller to new video element${shouldStartHidden ? ' (starting hidden)' : ''}`
       );
       this.attachController(video, parent, shouldStartHidden);
     } catch (error) {
       this.clearPendingController(video);
       const err = error as Error;
-      console.error('💥 Failed to attach controller to video:', error);
-      this.logger.error(`Failed to attach controller to video: ${err.message}`);
+      console.error('Failed to attach controller to video:', error);
+      logger.error(`Failed to attach controller to video: ${err.message}`);
     }
   }
 
   onVideoRemoved(video: HTMLMediaElement & { vsc?: any }): void {
     try {
       if (video.vsc) {
-        this.logger.debug('Removing controller from video element');
+        logger.debug('Removing controller from video element');
         video.vsc.remove();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to remove video controller: ${message}`);
+      logger.error(`Failed to remove video controller: ${message}`);
     }
   }
 
@@ -425,25 +410,24 @@ class VideoSpeedExtension {
     link.type = 'text/css';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
-    this.logger.debug('CSS injected into iframe document');
+    logger.debug('CSS injected into iframe document');
   }
 }
 
-window.VSC = window.VSC || {};
-window.VSC.VideoSpeedExtension = VideoSpeedExtension;
+export { VideoSpeedExtension };
 
 (function () {
   const extension = new VideoSpeedExtension();
   extension.registerMessageHandler();
 
   if (window.VSC_controller && window.VSC_controller.initialized) {
-    window.VSC.logger?.info('VSC already initialized, skipping re-injection');
+    logger.info('VSC already initialized, skipping re-injection');
     return;
   }
 
   extension.initialize().catch((error: Error) => {
     console.error(`Extension initialization failed: ${error.message}`);
-    window.VSC.logger.error(`Extension initialization failed: ${error.message}`);
+    logger.error(`Extension initialization failed: ${error.message}`);
   });
 
   window.VSC_controller = extension;

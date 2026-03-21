@@ -1,6 +1,7 @@
-window.VSC = window.VSC || {};
+import { findMediaElements, getShadow } from '../utils/dom-utils';
+import { logger } from '../utils/logger';
 
-class VideoMutationObserver {
+export class VideoMutationObserver {
   config: any;
   onVideoFound: (video: HTMLMediaElement, parent: Node | null) => void;
   onVideoRemoved: (video: HTMLMediaElement) => void;
@@ -32,7 +33,7 @@ class VideoMutationObserver {
   }
 
   getMediaElementsFromNode(node: Element | ShadowRoot | Document): HTMLMediaElement[] {
-    const mediaElements = window.VSC.DomUtils.findMediaElements(
+    const mediaElements = findMediaElements(
       node,
       this.config.settings.audioBoolean
     ) as HTMLMediaElement[];
@@ -88,7 +89,7 @@ class VideoMutationObserver {
       childList: true,
       subtree: true,
     });
-    window.VSC.logger.debug('Video mutation observer started');
+    logger.debug('Video mutation observer started');
   }
 
   processMutations(mutations: MutationRecord[]): void {
@@ -111,7 +112,7 @@ class VideoMutationObserver {
       }
 
       if (node === document.documentElement) {
-        window.VSC.logger.debug('Document was replaced, reinitializing');
+        logger.debug('Document was replaced, reinitializing');
         this.onDocumentReplaced();
         return;
       }
@@ -138,7 +139,7 @@ class VideoMutationObserver {
       (target.attributes['aria-hidden'] && target.attributes['aria-hidden'].value === 'false') ||
       target.nodeName === 'APPLE-TV-PLUS-PLAYER'
     ) {
-      const flattenedNodes = window.VSC.DomUtils.getShadow(document.body) as Array<any>;
+      const flattenedNodes = getShadow(document.body) as Array<any>;
       const videoNodes = flattenedNodes.filter((node) => node.tagName === 'VIDEO');
 
       for (const node of videoNodes) {
@@ -179,7 +180,7 @@ class VideoMutationObserver {
 
     if (video.vsc) {
       if (!this.mediaObserver.isValidMediaElement(video)) {
-        window.VSC.logger.debug('Video became invalid, removing controller');
+        logger.debug('Video became invalid, removing controller');
         video.vsc.remove();
         video.vsc = null;
       } else {
@@ -189,7 +190,7 @@ class VideoMutationObserver {
     }
 
     if (this.mediaObserver.isValidMediaElement(video)) {
-      window.VSC.logger.debug('Video became valid, attaching controller');
+      logger.debug('Video became valid, attaching controller');
       this.onVideoFound(video, video.parentElement || video.parentNode);
     }
   }
@@ -239,11 +240,11 @@ class VideoMutationObserver {
     });
     this.shadowObservers.set(shadowRoot, shadowObserver);
 
-    window.VSC.logger.debug('Shadow root observer added');
+    logger.debug('Shadow root observer added');
   }
 
   onDocumentReplaced(): void {
-    window.VSC.logger.warn('Document replacement detected - full reinitialization needed');
+    logger.warn('Document replacement detected - full reinitialization needed');
   }
 
   stop(): void {
@@ -257,8 +258,6 @@ class VideoMutationObserver {
     });
     this.shadowObservers.clear();
 
-    window.VSC.logger.debug('Video mutation observer stopped');
+    logger.debug('Video mutation observer stopped');
   }
 }
-
-window.VSC.VideoMutationObserver = VideoMutationObserver;

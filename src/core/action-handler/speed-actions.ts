@@ -8,7 +8,7 @@ function isValidSpeedChange(video: HTMLMediaElement & { vsc?: unknown }, value: 
   }
 
   if (typeof value !== 'number' || isNaN(value)) {
-    logger.warn('adjustSpeed called with invalid value:', value);
+    logger.warn(`adjustSpeed called with invalid value: ${value}`);
     return false;
   }
 

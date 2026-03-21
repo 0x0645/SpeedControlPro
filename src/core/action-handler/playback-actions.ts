@@ -3,17 +3,19 @@ import {
   isAudioController,
   showControllerForMedia,
 } from './controller-actions';
+import { siteHandlerManager } from '../../site-handlers/index';
+import { logger } from '../../utils/logger';
 
 function seek(video: HTMLMediaElement, seekSeconds: number): void {
-  window.VSC.siteHandlerManager.handleSeek(video, seekSeconds);
+  siteHandlerManager.handleSeek(video, seekSeconds);
 }
 
 function pause(video: HTMLMediaElement): void {
   if (video.paused) {
-    window.VSC.logger.debug('Resuming video');
+    logger.debug('Resuming video');
     void video.play();
   } else {
-    window.VSC.logger.debug('Pausing video');
+    logger.debug('Pausing video');
     video.pause();
   }
 }
@@ -27,7 +29,7 @@ function resetSpeed(
   showControllerForMedia(video, eventManager);
 
   if (!video.vsc) {
-    window.VSC.logger.warn('resetSpeed called on video without controller');
+    logger.warn('resetSpeed called on video without controller');
     return;
   }
 
@@ -35,18 +37,18 @@ function resetSpeed(
 
   if (currentSpeed === target) {
     if (video.vsc.speedBeforeReset !== null) {
-      window.VSC.logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
+      logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
       const rememberedSpeed = video.vsc.speedBeforeReset;
       video.vsc.speedBeforeReset = null;
       actionHandler.adjustSpeed(video, rememberedSpeed);
     } else {
-      window.VSC.logger.info(`Already at reset speed ${target}, no change`);
+      logger.info(`Already at reset speed ${target}, no change`);
     }
 
     return;
   }
 
-  window.VSC.logger.info(`Remembering speed ${currentSpeed} and resetting to ${target}`);
+  logger.info(`Remembering speed ${currentSpeed} and resetting to ${target}`);
   video.vsc.speedBeforeReset = currentSpeed;
   actionHandler.adjustSpeed(video, target);
 }
@@ -64,12 +66,12 @@ function volumeDown(video: HTMLMediaElement, value: number): void {
 }
 
 function setMark(video: HTMLMediaElement & { vsc?: any }): void {
-  window.VSC.logger.debug('Adding marker');
+  logger.debug('Adding marker');
   video.vsc.mark = video.currentTime;
 }
 
 function jumpToMark(video: HTMLMediaElement & { vsc?: any }): void {
-  window.VSC.logger.debug('Recalling marker');
+  logger.debug('Recalling marker');
   if (video.vsc.mark && typeof video.vsc.mark === 'number') {
     video.currentTime = video.vsc.mark;
   }
@@ -83,16 +85,16 @@ function blinkController(
 
   clearControllerBlinkTimeout(controller);
   controller.classList.add('vsc-show');
-  window.VSC.logger.debug('Showing controller temporarily with vsc-show class');
+  logger.debug('Showing controller temporarily with vsc-show class');
 
   if (!audioController) {
     controller.blinkTimeOut = window.setTimeout(() => {
       controller.classList.remove('vsc-show');
       controller.blinkTimeOut = undefined;
-      window.VSC.logger.debug('Removing vsc-show class after timeout');
+      logger.debug('Removing vsc-show class after timeout');
     }, duration || 2500);
   } else {
-    window.VSC.logger.debug('Audio controller blink - keeping vsc-show class');
+    logger.debug('Audio controller blink - keeping vsc-show class');
   }
 }
 

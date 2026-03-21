@@ -127,7 +127,7 @@ export class VideoController {
     fragment.appendChild(wrapper);
 
     const positioning = siteHandlerManager.getControllerPosition(
-      this.parent,
+      this.parent!,
       this.video
     );
 

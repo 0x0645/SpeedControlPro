@@ -18,7 +18,7 @@ export interface SiteProfile {
 export interface ExtensionSettings {
   lastSpeed: number;
   enabled: boolean;
-  speeds: Record<string, number>;
+  speeds?: Record<string, number>;
   keyBindings: KeyBinding[];
   blacklist: string;
   forceLastSavedSpeed: boolean;

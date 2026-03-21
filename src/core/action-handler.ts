@@ -125,7 +125,7 @@ export class ActionHandler {
         this.blinkController(video.vsc!.div!, value);
         break;
       case 'drag':
-        DragHandler.handleDrag(video, e);
+        DragHandler.handleDrag(video, e as MouseEvent);
         break;
       case 'fast':
         this.resetSpeed(video, value);
@@ -149,11 +149,11 @@ export class ActionHandler {
         this.jumpToMark(video);
         break;
       case 'SET_SPEED':
-        logger.info('Setting speed to:', value);
+        logger.info(`Setting speed to: ${value}`);
         this.adjustSpeed(video, value, { source: 'internal' });
         break;
       case 'ADJUST_SPEED':
-        logger.info('Adjusting speed by:', value);
+        logger.info(`Adjusting speed by: ${value}`);
         this.adjustSpeed(video, value, { relative: true, source: 'internal' });
         break;
       case 'RESET_SPEED': {

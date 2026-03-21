@@ -92,7 +92,7 @@ export class ShadowDOMManager {
     }
   }
 
-  static calculatePosition(video: HTMLVideoElement): { top: string; left: string } {
+  static calculatePosition(video: HTMLMediaElement): { top: string; left: string } {
     const rect = video.getBoundingClientRect();
     const offsetRect = (video.offsetParent as HTMLElement | null)?.getBoundingClientRect();
     const top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;

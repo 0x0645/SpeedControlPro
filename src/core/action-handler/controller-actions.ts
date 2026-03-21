@@ -1,5 +1,8 @@
+import { stateManager } from '../state-manager';
+import { logger } from '../../utils/logger';
+
 function getControlledMedia(): HTMLMediaElement[] {
-  return window.VSC.stateManager ? window.VSC.stateManager.getControlledElements() : [];
+  return stateManager ? stateManager.getControlledElements() : [];
 }
 
 function getTargetControllerFromEvent(event: Event | null | undefined): HTMLElement | null {
@@ -55,12 +58,12 @@ function toggleControllerDisplay(
   video: HTMLMediaElement & { vsc?: { div?: HTMLElement } },
   eventManager?: { timer?: number | null } | null
 ): void {
-  window.VSC.logger.debug('Display action triggered');
+  logger.debug('Display action triggered');
 
   const controller = video.vsc?.div as (HTMLElement & { blinkTimeOut?: number }) | undefined;
 
   if (!controller) {
-    window.VSC.logger.error('No controller found for video');
+    logger.error('No controller found for video');
     return;
   }
 
@@ -72,7 +75,7 @@ function toggleControllerDisplay(
 
   if (controller.classList.contains('vsc-hidden')) {
     controller.classList.remove('vsc-show');
-    window.VSC.logger.debug('Removed vsc-show class for immediate manual hide');
+    logger.debug('Removed vsc-show class for immediate manual hide');
   }
 }
 

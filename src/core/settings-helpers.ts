@@ -1,7 +1,8 @@
 import type { ExtensionSettings, KeyBinding, SiteProfile } from '../types/settings';
+import { DEFAULT_SETTINGS } from '../utils/constants';
 
 function cloneDefaultKeyBindings(): KeyBinding[] {
-  return window.VSC.Constants.DEFAULT_SETTINGS.keyBindings.map((binding: KeyBinding) => ({
+  return DEFAULT_SETTINGS.keyBindings.map((binding: KeyBinding) => ({
     ...binding,
   }));
 }
@@ -48,7 +49,7 @@ function normalizeSiteProfiles(siteProfiles: unknown): Record<string, SiteProfil
 }
 
 function normalizeStoredSettings(storage: Partial<ExtensionSettings>) {
-  const defaults = window.VSC.Constants.DEFAULT_SETTINGS as ExtensionSettings;
+  const defaults = DEFAULT_SETTINGS as ExtensionSettings;
 
   return {
     keyBindings: normalizeKeyBindings(storage.keyBindings),
