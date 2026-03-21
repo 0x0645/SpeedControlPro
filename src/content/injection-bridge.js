@@ -68,6 +68,22 @@ export function setupMessageBridge() {
       })
     );
 
+    // Handle get-current-speed request from popup (async via page context)
+    if (request.type === 'VSC_GET_SITE_INFO') {
+      const responseHandler = (event) => {
+        if (event.data?.source === 'vsc-page' && event.data?.action === 'current-speed-response') {
+          window.removeEventListener('message', responseHandler);
+          sendResponse(event.data.data);
+        }
+      };
+      window.addEventListener('message', responseHandler);
+      // Timeout fallback in case page context doesn't respond
+      setTimeout(() => {
+        window.removeEventListener('message', responseHandler);
+      }, 2000);
+      return true; // Keep message channel open for async response
+    }
+
     // Handle responses if needed
     if (request.action === 'get-status') {
       // Wait for response from page context

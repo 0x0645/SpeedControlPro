@@ -346,6 +346,24 @@ class VideoSpeedExtension {
             extension.actionHandler.runAction('display', null, null);
           }
           break;
+
+        case window.VSC.Constants.MESSAGE_TYPES.GET_SITE_INFO: {
+          const hostname = location.hostname;
+          const currentSpeed = window.VSC.videoSpeedConfig?.settings?.lastSpeed ||
+            (videos.length > 0 ? videos[0].playbackRate : 1.0);
+          const profile = window.VSC.videoSpeedConfig?.getSiteProfile(hostname);
+          window.postMessage({
+            source: 'vsc-page',
+            action: 'current-speed-response',
+            data: {
+              speed: currentSpeed,
+              hostname: hostname,
+              hasProfile: profile !== null,
+              profile: profile
+            }
+          }, '*');
+          break;
+        }
       }
     }
   });

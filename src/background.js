@@ -59,6 +59,22 @@ async function migrateConfig() {
 
   try {
     await chrome.storage.sync.remove(DEPRECATED_KEYS);
+
+    // Migrate siteSpeedMap → siteProfiles
+    const storage = await chrome.storage.sync.get({ siteSpeedMap: null, siteProfiles: null });
+    if (storage.siteSpeedMap && !storage.siteProfiles) {
+      const siteProfiles = {};
+      for (const [hostname, speed] of Object.entries(storage.siteSpeedMap)) {
+        siteProfiles[hostname] = { speed: Number(speed) };
+      }
+      await chrome.storage.sync.set({ siteProfiles });
+      await chrome.storage.sync.remove(['siteSpeedMap']);
+      console.log('[VSC] Migrated siteSpeedMap → siteProfiles');
+    } else if (storage.siteSpeedMap) {
+      // siteProfiles already exists, just clean up old key
+      await chrome.storage.sync.remove(['siteSpeedMap']);
+    }
+
     console.log('[VSC] Config migrated to current version');
   } catch (error) {
     console.error('[VSC] Config migration failed:', error);

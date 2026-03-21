@@ -44,6 +44,8 @@ if (!window.VSC.VideoSpeedConfig) {
           storage.logLevel || window.VSC.Constants.DEFAULT_SETTINGS.logLevel
         );
 
+        this.settings.siteProfiles = storage.siteProfiles || {};
+
         // Ensure display binding exists (for upgrades)
         this.ensureDisplayBinding();
 
@@ -145,6 +147,87 @@ if (!window.VSC.VideoSpeedConfig) {
         window.VSC.logger.debug(`Updated key binding ${action} to ${value}`);
       } catch (e) {
         window.VSC.logger.error(`Failed to set key binding for ${action}: ${e.message}`);
+      }
+    }
+
+    /**
+     * Get the effective value for a setting, considering site profile override.
+     * @param {string} key - Setting key (e.g., 'speed', 'controllerOpacity')
+     * @param {string} hostname - Site hostname
+     * @returns {*} The effective value (site override or global default)
+     */
+    getEffectiveSetting(key, hostname) {
+      const profile = this.getSiteProfile(hostname);
+      const globalKey = key === 'speed' ? 'lastSpeed' : key;
+      if (profile && profile[key] !== undefined && profile[key] !== null) {
+        return profile[key];
+      }
+      return this.settings[globalKey];
+    }
+
+    /**
+     * Get raw sparse site profile.
+     * @param {string} hostname
+     * @returns {Object|null}
+     */
+    getSiteProfile(hostname) {
+      const profiles = this.settings.siteProfiles || {};
+      return profiles[hostname] || null;
+    }
+
+    /**
+     * Get the fully resolved profile for a site (all settings filled in).
+     * @param {string} hostname
+     * @returns {Object} Complete settings with site overrides applied
+     */
+    getResolvedProfile(hostname) {
+      const profile = this.getSiteProfile(hostname) || {};
+      return {
+        speed: profile.speed ?? this.settings.lastSpeed,
+        controllerOpacity: profile.controllerOpacity ?? this.settings.controllerOpacity,
+        controllerButtonSize: profile.controllerButtonSize ?? this.settings.controllerButtonSize,
+        startHidden: profile.startHidden ?? this.settings.startHidden,
+        audioBoolean: profile.audioBoolean ?? this.settings.audioBoolean,
+        keyBindings: profile.keyBindings ?? this.settings.keyBindings,
+      };
+    }
+
+    /**
+     * Save a site profile (sparse — only overridden keys).
+     * @param {string} hostname
+     * @param {Object} profileData - Partial profile to merge
+     * @returns {Promise<void>}
+     */
+    async setSiteProfile(hostname, profileData) {
+      if (!this.settings.siteProfiles) {
+        this.settings.siteProfiles = {};
+      }
+      const existing = this.settings.siteProfiles[hostname] || {};
+      this.settings.siteProfiles[hostname] = { ...existing, ...profileData };
+      // Remove null/undefined keys (revert to global)
+      for (const [k, v] of Object.entries(this.settings.siteProfiles[hostname])) {
+        if (v === null || v === undefined) {
+          delete this.settings.siteProfiles[hostname][k];
+        }
+      }
+      // Remove empty profiles entirely
+      if (Object.keys(this.settings.siteProfiles[hostname]).length === 0) {
+        delete this.settings.siteProfiles[hostname];
+      }
+      await this.save({ siteProfiles: this.settings.siteProfiles });
+      window.VSC.logger.info(`Saved site profile for ${hostname}`);
+    }
+
+    /**
+     * Remove entire site profile.
+     * @param {string} hostname
+     * @returns {Promise<void>}
+     */
+    async removeSiteProfile(hostname) {
+      if (this.settings.siteProfiles?.[hostname]) {
+        delete this.settings.siteProfiles[hostname];
+        await this.save({ siteProfiles: this.settings.siteProfiles });
+        window.VSC.logger.info(`Removed site profile for ${hostname}`);
       }
     }
 

@@ -478,6 +478,9 @@ async function restore_defaults() {
     // Reload the options page
     await restore_options();
 
+    // Re-render per-site speeds (now empty)
+    renderSiteProfileList();
+
     status.textContent = "Default options restored";
     status.classList.add("success");
     setTimeout(function () {
@@ -557,6 +560,314 @@ function show_experimental() {
   button.disabled = true;
 }
 
+// Per-site profile management
+
+// Action labels for keybinding selects
+const ACTION_OPTIONS = [
+  { value: 'slower', label: 'Decrease speed' },
+  { value: 'faster', label: 'Increase speed' },
+  { value: 'rewind', label: 'Rewind' },
+  { value: 'advance', label: 'Advance' },
+  { value: 'reset', label: 'Reset speed' },
+  { value: 'fast', label: 'Preferred speed' },
+  { value: 'muted', label: 'Mute' },
+  { value: 'softer', label: 'Decrease volume' },
+  { value: 'louder', label: 'Increase volume' },
+  { value: 'pause', label: 'Pause' },
+  { value: 'mark', label: 'Set marker' },
+  { value: 'jump', label: 'Jump to marker' },
+  { value: 'display', label: 'Show/hide controller' },
+];
+
+function keyCodeToLabel(keyCode) {
+  if (keyCode === null || keyCode === undefined) return 'null';
+  return keyCodeAliases[keyCode] ||
+    (keyCode >= 48 && keyCode <= 90 ? String.fromCharCode(keyCode) : `Key ${keyCode}`);
+}
+
+function buildProfileKeybindingRow(binding, index) {
+  const actionOptionsHtml = ACTION_OPTIONS.map(opt =>
+    `<option value="${opt.value}" ${opt.value === binding.action ? 'selected' : ''}>${opt.label}</option>`
+  ).join('');
+
+  const noValue = window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(binding.action);
+
+  return `<div class="profile-kb-row" data-index="${index}">
+    <select class="profile-kb-action">${actionOptionsHtml}</select>
+    <input class="profile-kb-key" type="text" value="${keyCodeToLabel(binding.key)}" data-keycode="${binding.key}" placeholder="key" readonly />
+    <input class="profile-kb-value" type="text" value="${binding.value !== undefined ? binding.value : ''}" placeholder="value" ${noValue ? 'style="display:none"' : ''} />
+    <button class="profile-kb-remove" title="Remove shortcut">X</button>
+  </div>`;
+}
+
+function renderSiteProfileList() {
+  chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
+    const profiles = storage.siteProfiles || {};
+    const listEl = document.getElementById("site-profile-list");
+    listEl.innerHTML = "";
+
+    Object.entries(profiles).forEach(([hostname, profile]) => {
+      const entry = document.createElement("div");
+      entry.className = "site-profile-entry";
+      entry.dataset.hostname = hostname;
+
+      // Basic setting fields
+      const fields = [
+        { key: 'speed', label: 'Speed', type: 'number', step: '0.1', placeholder: 'global' },
+        { key: 'controllerOpacity', label: 'Opacity', type: 'number', step: '0.1', placeholder: 'global' },
+        { key: 'controllerButtonSize', label: 'Btn Size', type: 'number', step: '1', placeholder: 'global' },
+      ];
+
+      let fieldsHtml = fields.map(f => {
+        const val = profile[f.key] !== undefined ? profile[f.key] : '';
+        return `<label class="profile-field">
+          <span class="profile-field-label">${f.label}</span>
+          <input type="${f.type}" step="${f.step}" class="profile-input" data-key="${f.key}" value="${val}" placeholder="${f.placeholder}" />
+        </label>`;
+      }).join('');
+
+      const startHiddenChecked = profile.startHidden === true ? 'checked' : '';
+      const audioBooleanChecked = profile.audioBoolean === false ? '' : 'checked';
+      const hasStartHidden = profile.startHidden !== undefined;
+      const hasAudioBoolean = profile.audioBoolean !== undefined;
+
+      // Keybindings section
+      const hasCustomKb = Array.isArray(profile.keyBindings) && profile.keyBindings.length > 0;
+      const kbRows = hasCustomKb
+        ? profile.keyBindings.map((kb, i) => buildProfileKeybindingRow(kb, i)).join('')
+        : '';
+
+      entry.innerHTML = `
+        <div class="profile-header">
+          <span class="site-profile-host">${hostname}</span>
+          <button class="site-profile-remove" data-hostname="${hostname}" title="Remove profile">X</button>
+        </div>
+        <div class="profile-fields">
+          ${fieldsHtml}
+          <label class="profile-field profile-checkbox">
+            <input type="checkbox" class="profile-cb" data-key="startHidden" ${startHiddenChecked} ${hasStartHidden ? 'data-override="true"' : ''} />
+            <span class="profile-field-label">Start hidden</span>
+          </label>
+          <label class="profile-field profile-checkbox">
+            <input type="checkbox" class="profile-cb" data-key="audioBoolean" ${audioBooleanChecked} ${hasAudioBoolean ? 'data-override="true"' : ''} />
+            <span class="profile-field-label">Audio support</span>
+          </label>
+        </div>
+        <div class="profile-shortcuts">
+          <div class="profile-shortcuts-header">
+            <span class="profile-field-label">Shortcuts</span>
+            <span class="profile-kb-status">${hasCustomKb ? profile.keyBindings.length + ' custom' : 'Using global'}</span>
+          </div>
+          <div class="profile-kb-list ${hasCustomKb ? 'expanded' : ''}">${kbRows}</div>
+          <div class="profile-kb-actions">
+            ${hasCustomKb
+              ? `<button class="profile-kb-add secondary" title="Add shortcut">+ Add</button>
+                 <button class="profile-kb-reset secondary" title="Reset to global shortcuts">Reset to global</button>`
+              : `<button class="profile-kb-customize secondary">Customize shortcuts</button>`
+            }
+          </div>
+        </div>
+      `;
+      listEl.appendChild(entry);
+    });
+
+    // Attach event handlers
+    attachProfileInputHandlers(listEl);
+    attachProfileCheckboxHandlers(listEl);
+    attachProfileRemoveHandlers(listEl);
+    attachProfileKeybindingHandlers(listEl);
+  });
+}
+
+function attachProfileInputHandlers(listEl) {
+  listEl.querySelectorAll(".profile-input").forEach(input => {
+    input.addEventListener("change", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+      const key = this.dataset.key;
+      const val = this.value.trim();
+
+      await ensureConfig();
+      if (val === '') {
+        await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: null });
+      } else {
+        await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: parseFloat(val) });
+      }
+    });
+  });
+}
+
+function attachProfileCheckboxHandlers(listEl) {
+  listEl.querySelectorAll(".profile-cb").forEach(cb => {
+    cb.addEventListener("change", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+      const key = this.dataset.key;
+      this.dataset.override = 'true';
+
+      await ensureConfig();
+      await window.VSC.videoSpeedConfig.setSiteProfile(host, { [key]: this.checked });
+    });
+  });
+}
+
+function attachProfileRemoveHandlers(listEl) {
+  listEl.querySelectorAll(".site-profile-remove").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const host = this.dataset.hostname;
+      await ensureConfig();
+      await window.VSC.videoSpeedConfig.removeSiteProfile(host);
+      renderSiteProfileList();
+    });
+  });
+}
+
+function attachProfileKeybindingHandlers(listEl) {
+  // "Customize shortcuts" — copy global bindings into profile
+  listEl.querySelectorAll(".profile-kb-customize").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+
+      await ensureConfig();
+      const globalKb = window.VSC.videoSpeedConfig.settings.keyBindings ||
+        window.VSC.Constants.DEFAULT_SETTINGS.keyBindings;
+      // Deep copy global bindings as starting point
+      const copied = globalKb.map(kb => ({ ...kb, predefined: false }));
+      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: copied });
+      renderSiteProfileList();
+    });
+  });
+
+  // "Reset to global" — remove per-site bindings
+  listEl.querySelectorAll(".profile-kb-reset").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+
+      await ensureConfig();
+      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: null });
+      renderSiteProfileList();
+    });
+  });
+
+  // "Add" a new shortcut row
+  listEl.querySelectorAll(".profile-kb-add").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+
+      await ensureConfig();
+      const profile = window.VSC.videoSpeedConfig.getSiteProfile(host) || {};
+      const kbs = Array.isArray(profile.keyBindings) ? [...profile.keyBindings] : [];
+      kbs.push({ action: 'slower', key: null, value: 0.1, force: false });
+      await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: kbs });
+      renderSiteProfileList();
+    });
+  });
+
+  // Remove individual shortcut row
+  listEl.querySelectorAll(".profile-kb-remove").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const entry = this.closest('.site-profile-entry');
+      const host = entry.dataset.hostname;
+      const index = parseInt(this.closest('.profile-kb-row').dataset.index);
+
+      await ensureConfig();
+      const profile = window.VSC.videoSpeedConfig.getSiteProfile(host) || {};
+      const kbs = Array.isArray(profile.keyBindings) ? [...profile.keyBindings] : [];
+      kbs.splice(index, 1);
+      await window.VSC.videoSpeedConfig.setSiteProfile(host, {
+        keyBindings: kbs.length > 0 ? kbs : null
+      });
+      renderSiteProfileList();
+    });
+  });
+
+  // Key press recording for per-site shortcut keys
+  listEl.querySelectorAll(".profile-kb-key").forEach(input => {
+    // Initialize _keyCode from data attribute (set during render)
+    const initialCode = input.dataset.keycode;
+    input._keyCode = (initialCode && initialCode !== 'null' && initialCode !== 'undefined')
+      ? parseInt(initialCode) : null;
+    input.addEventListener("focus", function () { this.value = ""; });
+    input.addEventListener("keydown", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (BLACKLISTED_KEYCODES.includes(e.keyCode)) return;
+      if (e.keyCode === 8) { this.value = ""; this._keyCode = null; saveProfileKb(this); return; }
+      if (e.keyCode === 27) { this.value = "null"; this._keyCode = null; saveProfileKb(this); return; }
+      this.value = keyCodeToLabel(e.keyCode);
+      this._keyCode = e.keyCode;
+      saveProfileKb(this);
+    });
+    input.addEventListener("blur", function () {
+      if (this._keyCode !== undefined) {
+        this.value = keyCodeToLabel(this._keyCode);
+      }
+    });
+  });
+
+  // Action select change
+  listEl.querySelectorAll(".profile-kb-action").forEach(select => {
+    select.addEventListener("change", function () {
+      // Toggle value input visibility
+      const row = this.closest('.profile-kb-row');
+      const valueInput = row.querySelector('.profile-kb-value');
+      const noValue = window.VSC.Constants.CUSTOM_ACTIONS_NO_VALUES.includes(this.value);
+      valueInput.style.display = noValue ? 'none' : '';
+      saveProfileKb(this);
+    });
+  });
+
+  // Value input change
+  listEl.querySelectorAll(".profile-kb-value").forEach(input => {
+    input.addEventListener("change", function () { saveProfileKb(this); });
+  });
+}
+
+// Save the full keybindings array for a profile from DOM state
+async function saveProfileKb(triggerEl) {
+  const entry = triggerEl.closest('.site-profile-entry');
+  const host = entry.dataset.hostname;
+  const rows = entry.querySelectorAll('.profile-kb-row');
+
+  const kbs = [];
+  rows.forEach(row => {
+    const action = row.querySelector('.profile-kb-action').value;
+    const keyInput = row.querySelector('.profile-kb-key');
+    const key = keyInput._keyCode !== undefined ? keyInput._keyCode : null;
+    const value = Number(row.querySelector('.profile-kb-value').value) || 0;
+    kbs.push({ action, key, value, force: false });
+  });
+
+  await ensureConfig();
+  await window.VSC.videoSpeedConfig.setSiteProfile(host, { keyBindings: kbs });
+}
+
+async function ensureConfig() {
+  if (!window.VSC.videoSpeedConfig) {
+    window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
+    await window.VSC.videoSpeedConfig.load();
+  }
+}
+
+async function addSiteProfile() {
+  const hostnameInput = document.getElementById("site-profile-hostname");
+  const hostname = hostnameInput.value.trim();
+
+  if (!hostname) {
+    return;
+  }
+
+  await ensureConfig();
+  // Create empty profile (inherits all global defaults)
+  await window.VSC.videoSpeedConfig.setSiteProfile(hostname, { speed: 1.0 });
+
+  hostnameInput.value = "";
+  renderSiteProfileList();
+}
+
 // Create debounced save function to prevent rapid saves
 const debouncedSave = debounce(save_options, 300);
 
@@ -587,6 +898,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   document.getElementById("experimental").addEventListener("click", show_experimental);
+
+  // Per-site speed management
+  renderSiteProfileList();
+  document.getElementById("site-profile-add-btn").addEventListener("click", addSiteProfile);
 
   // About and feedback button event listeners
   document.getElementById("about").addEventListener("click", function () {

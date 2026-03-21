@@ -427,7 +427,7 @@ class ActionHandler {
    * @returns {number} Current preferred speed (always lastSpeed regardless of rememberSpeed setting)
    */
   getPreferredSpeed(video) {
-    return this.config.settings.lastSpeed || 1.0;
+    return this.config.getEffectiveSetting('speed', location.hostname) || 1.0;
   }
 
   /**

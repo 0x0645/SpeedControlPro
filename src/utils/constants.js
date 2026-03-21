@@ -42,6 +42,7 @@ teams.microsoft.com
 meet.google.com`.replace(regStrip, ''),
     defaultLogLevel: 4,
     logLevel: 3,
+    siteProfiles: {},
   };
 
   window.VSC.Constants.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
@@ -69,6 +70,9 @@ meet.google.com`.replace(regStrip, ''),
     ADJUST_SPEED: 'VSC_ADJUST_SPEED',
     RESET_SPEED: 'VSC_RESET_SPEED',
     TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
+    SET_SITE_PROFILE: 'VSC_SET_SITE_PROFILE',
+    REMOVE_SITE_PROFILE: 'VSC_REMOVE_SITE_PROFILE',
+    GET_SITE_INFO: 'VSC_GET_SITE_INFO',
   };
 
   const SPEED_LIMITS = {

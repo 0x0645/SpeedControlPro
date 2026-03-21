@@ -3,12 +3,16 @@ const MessageTypes = {
   SET_SPEED: 'VSC_SET_SPEED',
   ADJUST_SPEED: 'VSC_ADJUST_SPEED',
   RESET_SPEED: 'VSC_RESET_SPEED',
-  TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY'
+  TOGGLE_DISPLAY: 'VSC_TOGGLE_DISPLAY',
+  GET_SITE_INFO: 'VSC_GET_SITE_INFO'
 };
 
 document.addEventListener("DOMContentLoaded", function () {
   // Load settings and initialize speed controls
   loadSettingsAndInitialize();
+
+  // Initialize per-site speed UI
+  initializeSiteSpeed();
 
   // Settings button event listener
   document.querySelector("#config").addEventListener("click", function () {
@@ -160,6 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
           type: MessageTypes.SET_SPEED,
           payload: { speed: speed }
         });
+        updateSiteSpeedDisplay(speed);
       }
     });
   }
@@ -171,6 +176,31 @@ document.addEventListener("DOMContentLoaded", function () {
           type: MessageTypes.ADJUST_SPEED,
           payload: { delta: delta }
         });
+        // Query actual speed after adjustment since we only know the delta
+        setTimeout(function () {
+          chrome.tabs.sendMessage(tabs[0].id, { type: MessageTypes.GET_SITE_INFO }, function (response) {
+            if (response && response.speed) {
+              updateSiteSpeedDisplay(response.speed);
+            }
+          });
+        }, 100);
+      }
+    });
+  }
+
+  // Update the per-site speed label display only (no storage writes)
+  function updateSiteSpeedDisplay(speed) {
+    const labelEl = document.getElementById("site-speed-label");
+    const toggleBtn = document.getElementById("site-speed-toggle");
+    if (!toggleBtn || !toggleBtn.classList.contains("active")) return;
+    const hostnameEl = document.getElementById("site-hostname");
+    const hostname = hostnameEl.textContent;
+    // Show live speed vs saved profile speed
+    chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
+      const profiles = storage.siteProfiles || {};
+      const savedSpeed = profiles[hostname]?.speed;
+      if (savedSpeed !== undefined) {
+        labelEl.textContent = `Profile (${savedSpeed}x)`;
       }
     });
   }
@@ -182,6 +212,67 @@ document.addEventListener("DOMContentLoaded", function () {
           type: MessageTypes.RESET_SPEED
         });
       }
+    });
+  }
+
+  // Per-site profile management
+  function initializeSiteSpeed() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (!tabs[0] || !tabs[0].url) return;
+
+      let hostname;
+      try {
+        hostname = new URL(tabs[0].url).hostname;
+      } catch (e) {
+        return;
+      }
+
+      const hostnameEl = document.getElementById("site-hostname");
+      const toggleBtn = document.getElementById("site-speed-toggle");
+      const labelEl = document.getElementById("site-speed-label");
+
+      hostnameEl.textContent = hostname;
+
+      // Check if there's already a site profile
+      chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
+        const profiles = storage.siteProfiles || {};
+        const hasProfile = profiles[hostname] !== undefined;
+
+        if (hasProfile) {
+          toggleBtn.classList.add("active");
+          const savedSpeed = profiles[hostname].speed;
+          labelEl.textContent = savedSpeed !== undefined ? `Profile (${savedSpeed}x)` : 'Profile active';
+        } else {
+          toggleBtn.classList.remove("active");
+          labelEl.textContent = "Save for this site";
+        }
+      });
+
+      toggleBtn.addEventListener("click", function () {
+        chrome.storage.sync.get({ siteProfiles: {} }, function (storage) {
+          const profiles = storage.siteProfiles || {};
+          const hasProfile = profiles[hostname] !== undefined;
+
+          if (hasProfile) {
+            // Remove site profile
+            delete profiles[hostname];
+            chrome.storage.sync.set({ siteProfiles: profiles }, function () {
+              toggleBtn.classList.remove("active");
+              labelEl.textContent = "Save for this site";
+            });
+          } else {
+            // Create profile with current speed from the page
+            chrome.tabs.sendMessage(tabs[0].id, { type: 'VSC_GET_SITE_INFO' }, function (response) {
+              const currentSpeed = (response && response.speed) || 1.0;
+              profiles[hostname] = { speed: currentSpeed };
+              chrome.storage.sync.set({ siteProfiles: profiles }, function () {
+                toggleBtn.classList.add("active");
+                labelEl.textContent = `Profile (${currentSpeed}x)`;
+              });
+            });
+          }
+        });
+      });
     });
   }
 });

@@ -78,6 +78,60 @@ body {
   background-color: var(--md-surface);
 }
 
+/* Per-site speed section */
+.site-speed-section {
+  padding: 8px 20px 12px 20px;
+  border-top: 1px solid var(--md-outline-variant);
+}
+
+.site-speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.site-hostname {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.site-speed-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 16px;
+  background-color: var(--md-surface-variant);
+  color: var(--md-on-surface-variant);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  white-space: nowrap;
+}
+
+.site-speed-btn:hover {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border-color: var(--md-primary);
+}
+
+.site-speed-btn.active {
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  border-color: var(--md-primary);
+}
+
+.site-speed-btn:active {
+  transform: scale(0.96);
+}
+
 /* Footer */
 .footer {
   background-color: var(--md-surface-container);

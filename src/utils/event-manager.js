@@ -93,8 +93,9 @@ class EventManager {
       return false;
     }
 
-    // Find matching key binding
-    const keyBinding = this.config.settings.keyBindings.find((item) => item.key === keyCode);
+    // Find matching key binding (using per-site override if available)
+    const effectiveKeyBindings = this.config.getEffectiveSetting('keyBindings', location.hostname);
+    const keyBinding = effectiveKeyBindings.find((item) => item.key === keyCode);
 
     if (keyBinding) {
       this.actionHandler.runAction(keyBinding.action, keyBinding.value, event);
@@ -270,15 +271,16 @@ class EventManager {
     // When startHidden is enabled, only show temporary feedback if the user has
     // previously interacted with this controller manually (vsc-manual class)
     // This prevents unwanted controller appearances on pages where user wants them hidden
-    if (this.config.settings.startHidden && !controller.classList.contains('vsc-manual')) {
+    const effectiveStartHidden = this.config.getEffectiveSetting('startHidden', location.hostname);
+    if (effectiveStartHidden && !controller.classList.contains('vsc-manual')) {
       window.VSC.logger.info(
-        `Controller respecting startHidden setting - no temporary display (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
+        `Controller respecting startHidden setting - no temporary display (startHidden: ${effectiveStartHidden}, manual: ${controller.classList.contains('vsc-manual')})`
       );
       return;
     }
 
     window.VSC.logger.info(
-      `Showing controller temporarily (startHidden: ${this.config.settings.startHidden}, manual: ${controller.classList.contains('vsc-manual')})`
+      `Showing controller temporarily (startHidden: ${effectiveStartHidden}, manual: ${controller.classList.contains('vsc-manual')})`
     );
     controller.classList.add('vsc-show');
 

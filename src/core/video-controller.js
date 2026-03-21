@@ -73,17 +73,10 @@ class VideoController {
    * @private
    */
   getTargetSpeed(media = this.video) {
-    // Always start with current preferred speed (lastSpeed)
-    // The difference is whether changes get saved back to lastSpeed
-    const targetSpeed = this.config.settings.lastSpeed || 1.0;
-
-    if (this.config.settings.rememberSpeed) {
-      window.VSC.logger.debug(`Remember mode: using lastSpeed ${targetSpeed} (changes will be saved)`);
-    } else {
-      window.VSC.logger.debug(`Non-persistent mode: using lastSpeed ${targetSpeed} (changes won't be saved)`);
-    }
-
-    return targetSpeed;
+    const hostname = location.hostname;
+    const speed = this.config.getEffectiveSetting('speed', hostname) || 1.0;
+    window.VSC.logger.debug(`Target speed for ${hostname}: ${speed}`);
+    return speed;
   }
 
   /**
@@ -97,6 +90,7 @@ class VideoController {
     const document = this.video.ownerDocument;
     const speed = window.VSC.Constants.formatSpeed(this.video.playbackRate);
     const position = window.VSC.ShadowDOMManager.calculatePosition(this.video);
+    const hostname = location.hostname;
 
     window.VSC.logger.debug(`Speed variable set to: ${speed}`);
 
@@ -112,7 +106,8 @@ class VideoController {
       cssClasses.push('vsc-nosource');
     }
 
-    if (this.config.settings.startHidden || this.shouldStartHidden) {
+    const startHidden = this.config.getEffectiveSetting('startHidden', hostname);
+    if (startHidden || this.shouldStartHidden) {
       cssClasses.push('vsc-hidden');
       window.VSC.logger.debug('Starting controller hidden');
     }
@@ -137,8 +132,8 @@ class VideoController {
       top: '0px', // Position relative to shadow root since wrapper is already positioned
       left: '0px', // Position relative to shadow root since wrapper is already positioned
       speed: speed,
-      opacity: this.config.settings.controllerOpacity,
-      buttonSize: this.config.settings.controllerButtonSize,
+      opacity: this.config.getEffectiveSetting('controllerOpacity', hostname),
+      buttonSize: this.config.getEffectiveSetting('controllerButtonSize', hostname),
     });
 
     // Set up control events
@@ -332,14 +327,18 @@ class VideoController {
     const isVisible = this.isVideoVisible();
     const isCurrentlyHidden = this.div.classList.contains('vsc-hidden');
 
+    const hostname = location.hostname;
+    const audioBoolean = this.config.getEffectiveSetting('audioBoolean', hostname);
+    const effectiveStartHidden = this.config.getEffectiveSetting('startHidden', hostname);
+
     // Special handling for audio elements - don't hide controllers for functional audio
     if (this.video.tagName === 'AUDIO') {
       // For audio, only hide if manually hidden or if audio support is disabled
-      if (!this.config.settings.audioBoolean && !isCurrentlyHidden) {
+      if (!audioBoolean && !isCurrentlyHidden) {
         this.div.classList.add('vsc-hidden');
         window.VSC.logger.debug('Hiding audio controller - audio support disabled');
       } else if (
-        this.config.settings.audioBoolean &&
+        audioBoolean &&
         isCurrentlyHidden &&
         !this.div.classList.contains('vsc-manual')
       ) {
@@ -355,7 +354,7 @@ class VideoController {
       isVisible &&
       isCurrentlyHidden &&
       !this.div.classList.contains('vsc-manual') &&
-      !this.config.settings.startHidden
+      !effectiveStartHidden
     ) {
       // Video became visible and controller is hidden (but not manually hidden and not set to start hidden)
       this.div.classList.remove('vsc-hidden');
