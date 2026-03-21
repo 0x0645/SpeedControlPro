@@ -50,11 +50,36 @@ class VideoSpeedExtension {
     return window.VSC.stateManager || null;
   }
 
-  getCurrentSpeed(videos: HTMLMediaElement[]): number {
-    if (videos.length > 0) {
-      return videos[0].playbackRate;
+  getMediaForSpeedRead(): HTMLMediaElement[] {
+    const controlled = this.getAllMediaElements();
+    if (controlled.length > 0) {
+      return controlled;
     }
-    return window.VSC.videoSpeedConfig?.settings?.lastSpeed || 1.0;
+    const fallback: HTMLMediaElement[] = [];
+    const media = document.querySelectorAll('video, audio');
+    media.forEach((el) => {
+      if (el instanceof HTMLMediaElement && el.isConnected) {
+        fallback.push(el);
+      }
+    });
+    return fallback;
+  }
+
+  getRepresentativePlaybackRate(videos: HTMLMediaElement[]): number {
+    if (videos.length === 0) {
+      return window.VSC.videoSpeedConfig?.settings?.lastSpeed || 1.0;
+    }
+    const playing = videos.filter((v) => !v.paused);
+    const candidates = playing.length > 0 ? playing : videos;
+    const rates = candidates.map((v) => v.playbackRate).filter((r) => r >= 0.07);
+    if (rates.length === 0) {
+      return window.VSC.videoSpeedConfig?.settings?.lastSpeed || 1.0;
+    }
+    return Math.max(...rates);
+  }
+
+  getCurrentSpeed(videos: HTMLMediaElement[]): number {
+    return this.getRepresentativePlaybackRate(videos);
   }
 
   postSiteInfo(videos: HTMLMediaElement[]): void {
@@ -144,9 +169,11 @@ class VideoSpeedExtension {
           this.actionHandler.runAction('display', null, null);
         }
         break;
-      case this.MESSAGE_TYPES.GET_SITE_INFO:
-        this.postSiteInfo(videos);
+      case this.MESSAGE_TYPES.GET_SITE_INFO: {
+        const mediaForRead = this.getMediaForSpeedRead();
+        this.postSiteInfo(mediaForRead);
         break;
+      }
     }
   }
 

@@ -26,4 +26,5 @@ export const BRIDGE_ACTIONS = Object.freeze({
 
 export const EXTENSION_MESSAGES = Object.freeze({
   TOGGLE: 'EXTENSION_TOGGLE',
+  TAB_SPEED_UPDATE: 'VSC_TAB_SPEED_UPDATE',
 } as const);

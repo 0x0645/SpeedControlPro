@@ -321,11 +321,54 @@ runner.test('handleRuntimeMessage should post site info for popup requests', asy
       'current-speed-response',
       'site info action should match bridge contract'
     );
-    assert.equal(postedMessages[0].data.speed, 1.25, 'site info should prefer saved lastSpeed');
+    assert.equal(
+      postedMessages[0].data.speed,
+      1.5,
+      'site info should report actual playback rate from video'
+    );
     assert.equal(
       postedMessages[0].data.hasProfile,
       true,
       'site info should report existing profile'
+    );
+  } finally {
+    window.postMessage = originalPostMessage;
+  }
+});
+
+runner.test('handleRuntimeMessage GET_SITE_INFO should use max playback rate for multi-video', async () => {
+  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+  const localExtension = new VideoSpeedExtension();
+  const originalPostMessage = window.postMessage;
+  const postedMessages = [];
+  const video1 = createMockVideo();
+  const video2 = createMockVideo();
+
+  localExtension.MESSAGE_TYPES = window.VSC.Constants.MESSAGE_TYPES;
+  video1.playbackRate = 1.0;
+  video2.playbackRate = 2.0;
+
+  window.VSC.stateManager = {
+    getAllMediaElements: () => [video1, video2],
+  };
+  window.VSC.videoSpeedConfig = {
+    settings: { lastSpeed: 1.0 },
+    getSiteProfile: () => null,
+  };
+  window.postMessage = (payload) => {
+    postedMessages.push(payload);
+  };
+
+  try {
+    localExtension.handleRuntimeMessage({
+      type: window.VSC.Constants.MESSAGE_TYPES.GET_SITE_INFO,
+    });
+
+    assert.equal(postedMessages.length, 1, 'site info should be posted once');
+    assert.equal(
+      postedMessages[0].data.speed,
+      2.0,
+      'site info should use max playback rate among media'
     );
   } finally {
     window.postMessage = originalPostMessage;

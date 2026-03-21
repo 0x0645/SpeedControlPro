@@ -9,8 +9,10 @@ export interface KeyBinding {
 export interface SiteProfile {
   speed?: number | null;
   startHidden?: boolean | null;
+  audioBoolean?: boolean | null;
   controllerOpacity?: number | null;
   controllerButtonSize?: number | null;
+  keyBindings?: KeyBinding[] | null;
 }
 
 export interface ExtensionSettings {

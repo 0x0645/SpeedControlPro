@@ -76,16 +76,40 @@ chrome.storage.onChanged.addListener(
   }
 );
 
-chrome.runtime.onMessage.addListener((message: { type?: string; enabled?: boolean }) => {
-  if (message.type === EXTENSION_MESSAGES.TOGGLE) {
-    void updateIcon(message.enabled !== false);
+chrome.runtime.onMessage.addListener(
+  (message: { type?: string; enabled?: boolean; lastSpeed?: number }, sender: { tab?: { id?: number } }) => {
+    if (message.type === EXTENSION_MESSAGES.TOGGLE) {
+      void updateIcon(message.enabled !== false);
+      return;
+    }
+    if (message.type === EXTENSION_MESSAGES.TAB_SPEED_UPDATE && sender.tab?.id != null) {
+      const tabId = sender.tab.id;
+      const lastSpeed = message.lastSpeed;
+      if (typeof lastSpeed === 'number' && Number.isFinite(lastSpeed)) {
+        chrome.storage.session.get({ tabSpeeds: {} }, (stored: { tabSpeeds?: Record<string, number> }) => {
+          const tabSpeeds = { ...(stored.tabSpeeds || {}), [String(tabId)]: lastSpeed };
+          chrome.storage.session.set({ tabSpeeds });
+        });
+      }
+      return;
+    }
   }
+);
+
+chrome.tabs.onRemoved.addListener((tabId: number) => {
+  chrome.storage.session.get({ tabSpeeds: {} }, (stored: { tabSpeeds?: Record<string, number> }) => {
+    const tabSpeeds = { ...(stored.tabSpeeds || {}) };
+    delete tabSpeeds[String(tabId)];
+    chrome.storage.session.set({ tabSpeeds });
+  });
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('Video Speed Controller installed/updated');
   await migrateConfig();
   await initializeIcon();
+  // Clean up legacy tabSpeeds from sync storage
+  chrome.storage.sync.remove(['tabSpeeds']);
 });
 
 chrome.runtime.onStartup.addListener(async () => {

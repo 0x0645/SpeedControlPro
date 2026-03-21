@@ -1,4 +1,9 @@
-import { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } from '../utils/message-types.ts';
+import {
+  BRIDGE_ACTIONS,
+  BRIDGE_SOURCES,
+  EXTENSION_MESSAGES,
+  MESSAGE_TYPES,
+} from '../utils/message-types.ts';
 
 let bridgeInitialized = false;
 
@@ -88,7 +93,17 @@ export function setupMessageBridge(): void {
 
     if (source === BRIDGE_SOURCES.PAGE) {
       if (action === BRIDGE_ACTIONS.STORAGE_UPDATE) {
-        chrome.storage.sync.set(data);
+        const update = data as Record<string, unknown>;
+        if (
+          typeof update.lastSpeed === 'number' &&
+          Number.isFinite(update.lastSpeed)
+        ) {
+          chrome.runtime.sendMessage({
+            type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
+            lastSpeed: update.lastSpeed,
+          });
+        }
+        chrome.storage.sync.set(update);
       } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE) {
         if (data.type !== MESSAGE_TYPES.STATE_UPDATE) {
           chrome.runtime.sendMessage(data);

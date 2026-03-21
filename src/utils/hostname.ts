@@ -18,12 +18,7 @@ export function normalizeHostname(input: string): string | null {
     return null;
   }
 
-  // Must contain at least one dot (e.g. "youtube.com")
-  if (!hostname.includes('.')) {
-    return null;
-  }
-
-  // Basic format check: only valid hostname characters
+  // Basic format check: only valid hostname characters (allows single-label like "localhost")
   if (!/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$/.test(hostname)) {
     return null;
   }

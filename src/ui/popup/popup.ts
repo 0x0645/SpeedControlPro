@@ -233,15 +233,37 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshSiteProfileUI();
   }
 
-  function loadSettingsAndInitialize(): void {
-    chrome.storage.sync.get(null, (storage: PopupStorage) => {
-      let slowerStep = 0.1;
-      let fasterStep = 0.1;
+  function getEffectiveKeyBindings(storage: PopupStorage, hostname: string): Array<{ action: string; value: number }> {
+    const profiles = storage.siteProfiles || {};
+    const key = normalizeHostname(hostname) || hostname;
+    const profile = profiles[key] || profiles[hostname];
+    const resolved =
+      (profile && Array.isArray(profile.keyBindings) ? profile.keyBindings : null) ??
+      (Array.isArray(storage.keyBindings) ? storage.keyBindings : []);
+    return resolved;
+  }
 
-      if (storage.keyBindings && Array.isArray(storage.keyBindings)) {
-        const slowerBinding = storage.keyBindings.find((kb: any) => kb.action === 'slower');
-        const fasterBinding = storage.keyBindings.find((kb: any) => kb.action === 'faster');
-        const fastBinding = storage.keyBindings.find((kb: any) => kb.action === 'fast');
+  function loadSettingsAndInitialize(): void {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+      let hostname = '';
+      if (tabs[0]?.url) {
+        try {
+          const raw = new URL(tabs[0].url).hostname;
+          hostname = normalizeHostname(raw) || raw;
+        } catch {
+          hostname = '';
+        }
+      }
+
+      chrome.storage.sync.get(null, (storage: PopupStorage) => {
+        const keyBindings = getEffectiveKeyBindings(storage, hostname);
+
+        let slowerStep = 0.1;
+        let fasterStep = 0.1;
+
+        const slowerBinding = keyBindings.find((kb) => kb.action === 'slower');
+        const fasterBinding = keyBindings.find((kb) => kb.action === 'faster');
+        const fastBinding = keyBindings.find((kb) => kb.action === 'fast');
 
         if (slowerBinding && typeof slowerBinding.value === 'number') {
           slowerStep = slowerBinding.value;
@@ -252,31 +274,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fastBinding && typeof fastBinding.value === 'number') {
           preferredSpeed = fastBinding.value;
         }
-      }
 
-      const decreaseBtn = query<HTMLElement>('#speed-decrease');
-      if (decreaseBtn) {
-        decreaseBtn.dataset.delta = String(-slowerStep);
-      }
-      const increaseBtn = query<HTMLElement>('#speed-increase');
-      if (increaseBtn) {
-        increaseBtn.dataset.delta = String(fasterStep);
-      }
+        const decreaseBtn = query<HTMLElement>('#speed-decrease');
+        if (decreaseBtn) {
+          decreaseBtn.dataset.delta = String(-slowerStep);
+        }
+        const increaseBtn = query<HTMLElement>('#speed-increase');
+        if (increaseBtn) {
+          increaseBtn.dataset.delta = String(fasterStep);
+        }
 
-      initializeSpeedControls();
+        initializeSpeedControls();
 
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(
-            tabs[0].id!,
-            { type: MESSAGE_TYPES.GET_SITE_INFO },
-            (response: SiteInfoResponse) => {
-              const speed = (response && response.speed) || storage.lastSpeed || 1.0;
-              updateSpeedUI(speed);
-            }
-          );
+        // Show speed: session tab speed > GET_SITE_INFO > lastSpeed fallback
+        const tabId = tabs[0]?.id;
+        const fallbackSpeed = storage.lastSpeed ?? 1.0;
+
+        if (tabId) {
+          // Try session storage first (instant, written by background on every speed change)
+          chrome.storage.session.get({ tabSpeeds: {} }, (session: { tabSpeeds?: Record<string, number> }) => {
+            const sessionSpeed = (session.tabSpeeds || {})[String(tabId)];
+            updateSpeedUI(typeof sessionSpeed === 'number' ? sessionSpeed : fallbackSpeed);
+
+            // Then reconcile with the actual playback rate from the page
+            chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.GET_SITE_INFO }, (res: SiteInfoResponse) => {
+              const s = typeof res?.speed === 'number' && Number.isFinite(res.speed) ? res.speed : null;
+              if (s != null) {
+                updateSpeedUI(s);
+              }
+            });
+          });
         } else {
-          updateSpeedUI(storage.lastSpeed || 1.0);
+          updateSpeedUI(fallbackSpeed);
         }
       });
     });
@@ -317,16 +346,23 @@ document.addEventListener('DOMContentLoaded', () => {
   function adjustSpeed(delta: number): void {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
       if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id!, {
+        const tabId = tabs[0].id!;
+        // Optimistic UI update
+        const estimated = Math.min(16, Math.max(0.07, Number((currentSpeed + delta).toFixed(2))));
+        updateSpeedUI(estimated);
+
+        chrome.tabs.sendMessage(tabId, {
           type: MESSAGE_TYPES.ADJUST_SPEED,
           payload: { delta },
         });
+
+        // Reconcile with actual playback rate
         globalThis.setTimeout(() => {
           chrome.tabs.sendMessage(
-            tabs[0].id!,
+            tabId,
             { type: MESSAGE_TYPES.GET_SITE_INFO },
             (response: SiteInfoResponse) => {
-              if (response && response.speed) {
+              if (response && typeof response.speed === 'number') {
                 updateSpeedUI(response.speed);
               }
             }

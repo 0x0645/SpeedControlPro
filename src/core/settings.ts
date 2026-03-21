@@ -161,8 +161,8 @@ class VideoSpeedConfig {
       controllerOpacity: profile.controllerOpacity ?? this.settings.controllerOpacity,
       controllerButtonSize: profile.controllerButtonSize ?? this.settings.controllerButtonSize,
       startHidden: profile.startHidden ?? this.settings.startHidden,
-      audioBoolean: (profile as any).audioBoolean ?? this.settings.audioBoolean,
-      keyBindings: (profile as any).keyBindings ?? this.settings.keyBindings,
+      audioBoolean: profile.audioBoolean ?? this.settings.audioBoolean,
+      keyBindings: profile.keyBindings ?? this.settings.keyBindings,
     };
   }
 
