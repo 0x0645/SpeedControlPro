@@ -15,7 +15,7 @@ runner.beforeEach(() => {
   installChromeMock();
   // Clear state manager before each test to ensure isolation
   if (window.VSC && window.VSC.stateManager) {
-    window.VSC.stateManager.controllers.clear();
+    window.VSC.stateManager.__resetForTests();
   }
 });
 
@@ -23,10 +23,10 @@ runner.afterEach(() => {
   cleanupChromeMock();
   // Clear state manager after each test to prevent state leakage
   if (window.VSC && window.VSC.stateManager) {
-    window.VSC.stateManager.controllers.clear();
+    window.VSC.stateManager.__resetForTests();
   }
   // Remove any lingering video elements
-  document.querySelectorAll('video, audio').forEach(el => el.remove());
+  document.querySelectorAll('video, audio').forEach((el) => el.remove());
 });
 
 function createMockVideo(options = {}) {
@@ -77,8 +77,15 @@ runner.test('VideoController should register with state manager', async () => {
   const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
   // Verify controller is registered with state manager
-  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be registered with state manager');
-  assert.true(window.VSC.stateManager.controllers.has(controller.controllerId), 'Controller ID should be in state manager');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    1,
+    'Controller should be registered with state manager'
+  );
+  assert.true(
+    window.VSC.stateManager.controllers.has(controller.controllerId),
+    'Controller ID should be in state manager'
+  );
 
   // Verify controller has ID
   assert.exists(controller.controllerId, 'Controller should have an ID');
@@ -86,7 +93,11 @@ runner.test('VideoController should register with state manager', async () => {
   // Verify state manager has correct info
   const controllerInfo = window.VSC.stateManager.controllers.get(controller.controllerId);
   assert.exists(controllerInfo, 'Controller info should exist in state manager');
-  assert.equal(controllerInfo.element, mockVideo, 'State manager should reference correct video element');
+  assert.equal(
+    controllerInfo.element,
+    mockVideo,
+    'State manager should reference correct video element'
+  );
   assert.equal(controllerInfo.tagName, 'VIDEO', 'State manager should store tag name');
 
   // Cleanup
@@ -112,8 +123,15 @@ runner.test('VideoController should unregister from state manager on removal', a
   controller.remove();
 
   // Verify controller was unregistered from state manager
-  assert.equal(window.VSC.stateManager.controllers.size, 0, 'Controller should be unregistered from state manager');
-  assert.false(window.VSC.stateManager.controllers.has(controllerId), 'Controller ID should be removed from state manager');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    0,
+    'Controller should be unregistered from state manager'
+  );
+  assert.false(
+    window.VSC.stateManager.controllers.has(controllerId),
+    'Controller ID should be removed from state manager'
+  );
 
   // Verify controller is properly cleaned up
   assert.equal(mockVideo.vsc, undefined, 'Video should no longer have vsc reference');
@@ -179,7 +197,11 @@ runner.test('Audio controllers should register with state manager too', async ()
   const controller = new window.VSC.VideoController(mockAudio, null, config, actionHandler);
 
   // Verify controller is registered with state manager
-  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Audio controller should be registered with state manager');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    1,
+    'Audio controller should be registered with state manager'
+  );
   assert.exists(controller.controllerId, 'Audio controller should have an ID');
 
   // Verify state manager has correct info for audio
@@ -191,4 +213,4 @@ runner.test('Audio controllers should register with state manager too', async ()
   document.body.removeChild(mockAudio);
 });
 
-export { runner as iconIntegrationTestRunner }; 
+export { runner as iconIntegrationTestRunner };

@@ -4,7 +4,7 @@
  */
 
 import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
-import { isBlacklisted } from '../../../src/utils/blacklist.js';
+import { isBlacklisted } from '../../../src/utils/blacklist.ts';
 
 const runner = new SimpleTestRunner();
 
@@ -15,7 +15,7 @@ runner.test('settings passed to page context should not contain blacklist', () =
     enabled: true,
     blacklist: 'youtube.com\nnetflix.com',
     rememberSpeed: true,
-    keyBindings: []
+    keyBindings: [],
   };
 
   // This is what content-entry.js does before injecting
@@ -55,7 +55,7 @@ runner.test('enabled extension on non-blacklisted site should proceed', () => {
   const settings = {
     enabled: true,
     blacklist: 'youtube.com',
-    lastSpeed: 1.5
+    lastSpeed: 1.5,
   };
 
   const isDisabled = settings.enabled === false;

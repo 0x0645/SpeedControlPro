@@ -4,7 +4,7 @@
  */
 
 import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
-import { isBlacklisted } from '../../../src/utils/blacklist.js';
+import { isBlacklisted } from '../../../src/utils/blacklist.ts';
 
 const runner = new SimpleTestRunner();
 
@@ -15,12 +15,16 @@ runner.test('should parse regex patterns WITHOUT flags', () => {
     { url: 'https://www.youtube.com/', shouldMatch: true },
     { url: 'https://music.youtube.com/', shouldMatch: true },
     { url: 'https://m.youtube.com/', shouldMatch: true },
-    { url: 'https://example.com/', shouldMatch: false }
+    { url: 'https://example.com/', shouldMatch: false },
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
     const result = isBlacklisted(blacklist, url);
-    assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
+    assert.equal(
+      result,
+      shouldMatch,
+      `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`
+    );
   });
 });
 
@@ -31,12 +35,16 @@ runner.test('should parse regex patterns WITH flags', () => {
     { url: 'https://www.youtube.com/', shouldMatch: true },
     { url: 'https://YOUTUBE.COM/', shouldMatch: true }, // case insensitive with 'i' flag
     { url: 'https://music.youtube.com/', shouldMatch: true },
-    { url: 'https://example.com/', shouldMatch: false }
+    { url: 'https://example.com/', shouldMatch: false },
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
     const result = isBlacklisted(blacklist, url);
-    assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
+    assert.equal(
+      result,
+      shouldMatch,
+      `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`
+    );
   });
 });
 
@@ -56,7 +64,7 @@ runner.test('should handle multiple blacklist entries with mixed formats', () =>
     { url: 'https://www.instagram.com/', shouldMatch: true },
     { url: 'https://twitter.com/', shouldMatch: true },
     { url: 'https://TWITTER.COM/', shouldMatch: true }, // case insensitive
-    { url: 'https://example.com/', shouldMatch: false }
+    { url: 'https://example.com/', shouldMatch: false },
   ];
 
   testCases.forEach(({ url, shouldMatch }) => {
@@ -108,42 +116,53 @@ runner.test('should not match partial domain names (x.com should not match netfl
 
   testCases.forEach(({ url, shouldMatch }) => {
     const result = isBlacklisted(blacklist, url);
-    assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`);
+    assert.equal(
+      result,
+      shouldMatch,
+      `URL ${url} should ${shouldMatch ? 'match' : 'not match'} pattern ${blacklist}`
+    );
   });
 });
 
-runner.test('should handle real user blacklist correctly (netflix.com should NOT be blocked)', () => {
-  // User's actual blacklist from the bug report
-  const blacklist = `www.instagram.com
+runner.test(
+  'should handle real user blacklist correctly (netflix.com should NOT be blocked)',
+  () => {
+    // User's actual blacklist from the bug report
+    const blacklist = `www.instagram.com
 x.com
 imgur.com
 teams.microsoft.com
 meet.google.com`;
 
-  const testCases = [
-    // These should be blocked
-    { url: 'https://www.instagram.com/', shouldMatch: true },
-    { url: 'https://instagram.com/', shouldMatch: false }, // Now should NOT match without www
-    { url: 'https://x.com/', shouldMatch: true },
-    { url: 'https://www.x.com/', shouldMatch: true },
-    { url: 'https://imgur.com/', shouldMatch: true },
-    { url: 'https://teams.microsoft.com/', shouldMatch: true },
-    { url: 'https://meet.google.com/', shouldMatch: true },
+    const testCases = [
+      // These should be blocked
+      { url: 'https://www.instagram.com/', shouldMatch: true },
+      { url: 'https://instagram.com/', shouldMatch: false }, // Now should NOT match without www
+      { url: 'https://x.com/', shouldMatch: true },
+      { url: 'https://www.x.com/', shouldMatch: true },
+      { url: 'https://imgur.com/', shouldMatch: true },
+      { url: 'https://teams.microsoft.com/', shouldMatch: true },
+      { url: 'https://meet.google.com/', shouldMatch: true },
 
-    // These should NOT be blocked
-    { url: 'https://netflix.com/', shouldMatch: false }, // The main issue - should NOT match
-    { url: 'https://www.netflix.com/', shouldMatch: false },
-    { url: 'https://max.com/', shouldMatch: false },
-    { url: 'https://fox.com/', shouldMatch: false },
-    { url: 'https://google.com/', shouldMatch: false }, // Only meet.google.com should be blocked
-    { url: 'https://microsoft.com/', shouldMatch: false }, // Only teams.microsoft.com should be blocked
-  ];
+      // These should NOT be blocked
+      { url: 'https://netflix.com/', shouldMatch: false }, // The main issue - should NOT match
+      { url: 'https://www.netflix.com/', shouldMatch: false },
+      { url: 'https://max.com/', shouldMatch: false },
+      { url: 'https://fox.com/', shouldMatch: false },
+      { url: 'https://google.com/', shouldMatch: false }, // Only meet.google.com should be blocked
+      { url: 'https://microsoft.com/', shouldMatch: false }, // Only teams.microsoft.com should be blocked
+    ];
 
-  testCases.forEach(({ url, shouldMatch }) => {
-    const result = isBlacklisted(blacklist, url);
-    assert.equal(result, shouldMatch, `URL ${url} should ${shouldMatch ? 'match' : 'not match'} with user's blacklist`);
-  });
-});
+    testCases.forEach(({ url, shouldMatch }) => {
+      const result = isBlacklisted(blacklist, url);
+      assert.equal(
+        result,
+        shouldMatch,
+        `URL ${url} should ${shouldMatch ? 'match' : 'not match'} with user's blacklist`
+      );
+    });
+  }
+);
 
 // Export for test runner
 export { runner };

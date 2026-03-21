@@ -3,8 +3,17 @@
  * Using global variables to match browser extension architecture
  */
 
-import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert, createMockVideo, createMockDOM } from '../../helpers/test-utils.js';
+import {
+  installChromeMock,
+  cleanupChromeMock,
+  resetMockStorage,
+} from '../../helpers/chrome-mock.js';
+import {
+  SimpleTestRunner,
+  assert,
+  createMockVideo,
+  createMockDOM,
+} from '../../helpers/test-utils.js';
 import { loadCoreModules } from '../../helpers/module-loader.js';
 
 // Load all required modules
@@ -20,7 +29,7 @@ runner.beforeEach(() => {
 
   // Clear state manager for tests
   if (window.VSC && window.VSC.stateManager) {
-    window.VSC.stateManager.controllers.clear();
+    window.VSC.stateManager.__resetForTests();
   }
 
   // Initialize site handler manager for tests
@@ -47,7 +56,12 @@ function createTestVideoWithController(config, actionHandler, videoOptions = {})
   const initialPlaybackRate = mockVideo.playbackRate;
 
   // Create a proper VideoController for this video
-  const controller = new window.VSC.VideoController(mockVideo, mockVideo.parentElement, config, actionHandler);
+  const controller = new window.VSC.VideoController(
+    mockVideo,
+    mockVideo.parentElement,
+    config,
+    actionHandler
+  );
 
   // Restore initial playback rate for test consistency
   mockVideo.playbackRate = initialPlaybackRate;
@@ -216,12 +230,12 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
   mockVideo.vsc.mark = undefined;
 
   // Verify mark key binding exists (M = 77)
-  const markBinding = config.settings.keyBindings.find(kb => kb.action === 'mark');
+  const markBinding = config.settings.keyBindings.find((kb) => kb.action === 'mark');
   assert.exists(markBinding, 'Mark key binding should exist');
   assert.equal(markBinding.key, 77, 'Mark should be bound to M key (77)');
 
   // Verify jump key binding exists (J = 74)
-  const jumpBinding = config.settings.keyBindings.find(kb => kb.action === 'jump');
+  const jumpBinding = config.settings.keyBindings.find((kb) => kb.action === 'jump');
   assert.exists(jumpBinding, 'Jump key binding should exist');
   assert.equal(jumpBinding.key, 74, 'Jump should be bound to J key (74)');
 
@@ -230,8 +244,8 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
     keyCode: 77,
     target: document.body,
     getModifierState: () => false,
-    preventDefault: () => { },
-    stopPropagation: () => { }
+    preventDefault: () => {},
+    stopPropagation: () => {},
   });
   assert.equal(mockVideo.vsc.mark, 25, 'Mark should be set at current time');
 
@@ -243,8 +257,8 @@ runner.test('ActionHandler should work with mark/jump key bindings', async () =>
     keyCode: 74,
     target: document.body,
     getModifierState: () => false,
-    preventDefault: () => { },
-    stopPropagation: () => { }
+    preventDefault: () => {},
+    stopPropagation: () => {},
   });
   assert.equal(mockVideo.currentTime, 25, 'Should jump back to marked time');
 });
@@ -304,7 +318,7 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
     textContent: '1.00',
     // Add other properties that might be needed
     nodeType: 1,
-    tagName: 'SPAN'
+    tagName: 'SPAN',
   };
 
   // Mock video controller structure for shadow DOM video
@@ -312,7 +326,7 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
     div: mockDOM.container,
     speedIndicator: mockSpeedIndicator,
     // Add remove method to prevent errors during cleanup
-    remove: () => { }
+    remove: () => {},
   };
 
   // Register with state manager for runAction to find it
@@ -322,7 +336,7 @@ runner.test('ActionHandler should work with videos in nested shadow DOM', async 
     videoSrc: mockVideo.currentSrc || 'test-video',
     tagName: 'VIDEO',
     created: Date.now(),
-    isActive: true
+    isActive: true,
   });
 
   // Test speed change on shadow DOM video
@@ -350,7 +364,7 @@ runner.test('adjustSpeed should handle absolute speed changes', async () => {
   const mockVideo = createMockVideo({ playbackRate: 1.0 });
   mockVideo.vsc = {
     div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
+    speedIndicator: { textContent: '1.00' },
   };
 
   // Test absolute speed change
@@ -377,7 +391,7 @@ runner.test('adjustSpeed should handle relative speed changes', async () => {
   const mockVideo = createMockVideo({ playbackRate: 1.0 });
   mockVideo.vsc = {
     div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
+    speedIndicator: { textContent: '1.00' },
   };
 
   // Test relative speed increase
@@ -407,7 +421,7 @@ runner.test('adjustSpeed should handle external changes with force mode', async 
   const mockVideo = createMockVideo({ playbackRate: 1.0 });
   mockVideo.vsc = {
     div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
+    speedIndicator: { textContent: '1.00' },
   };
 
   // Set initial user preference
@@ -433,7 +447,7 @@ runner.test('getPreferredSpeed should return global lastSpeed', async () => {
 
   const mockVideo = createMockVideo({
     playbackRate: 1.0,
-    currentSrc: 'https://example.com/video1.mp4'
+    currentSrc: 'https://example.com/video1.mp4',
   });
 
   // Test with set lastSpeed
@@ -446,7 +460,7 @@ runner.test('getPreferredSpeed should return global lastSpeed', async () => {
 
   // Different video should return same global speed
   const mockVideo2 = createMockVideo({
-    currentSrc: 'https://example.com/video2.mp4'
+    currentSrc: 'https://example.com/video2.mp4',
   });
   config.settings.lastSpeed = 2.5;
   assert.equal(actionHandler.getPreferredSpeed(mockVideo2), 2.5);
@@ -474,7 +488,7 @@ runner.test('adjustSpeed should validate input properly', async () => {
   const validVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
   // String value
-  actionHandler.adjustSpeed(validVideo, "1.5");
+  actionHandler.adjustSpeed(validVideo, '1.5');
   assert.equal(validVideo.playbackRate, 1.0); // Should not change
 
   // null value
@@ -500,11 +514,11 @@ runner.test('setSpeed should save global speed to storage', async () => {
 
   const mockVideo = createMockVideo({
     playbackRate: 1.0,
-    currentSrc: 'https://example.com/video.mp4'
+    currentSrc: 'https://example.com/video.mp4',
   });
   mockVideo.vsc = {
     div: mockDOM.container,
-    speedIndicator: { textContent: '1.00' }
+    speedIndicator: { textContent: '1.00' },
   };
 
   // Track what gets saved
@@ -530,8 +544,12 @@ runner.test('do not persist video speed to storage', async () => {
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
   // Create two different videos with controllers
-  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
+  const video1 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video1.mp4',
+  });
+  const video2 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video2.mp4',
+  });
 
   // Track saves to verify behavior
   const savedCalls = [];
@@ -547,7 +565,7 @@ runner.test('do not persist video speed to storage', async () => {
 
   // With rememberSpeed = false, no speeds should be persisted to storage
   assert.equal(savedCalls.length, 0, 'No saves should occur when rememberSpeed is false');
-  
+
   // Videos should still have their playback rates set
   assert.equal(video1.playbackRate, 1.5);
   assert.equal(video2.playbackRate, 2.0);
@@ -564,13 +582,16 @@ runner.test('rememberSpeed: true should only store global speed', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video1.mp4' });
-  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video2.mp4' });
+  const video1 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video1.mp4',
+  });
+  const video2 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video2.mp4',
+  });
 
   // Change speeds on different videos
   await actionHandler.adjustSpeed(video1, 1.5);
   await actionHandler.adjustSpeed(video2, 2.0);
-
 
   // Global lastSpeed should be updated
   assert.equal(config.settings.lastSpeed, 2.0);
@@ -615,7 +636,7 @@ runner.test('adjustSpeed should handle complex relative mode scenarios', async (
   // Test relative from very low speed
   video.playbackRate = 0.05; // Below 0.1 threshold
   actionHandler.adjustSpeed(video, 0.1, { relative: true });
-  assert.equal(video.playbackRate, 0.10); // Should use 0.0 as base for very low speeds
+  assert.equal(video.playbackRate, 0.1); // Should use 0.0 as base for very low speeds
 
   // Test large relative changes
   video.playbackRate = 1.0;
@@ -659,9 +680,15 @@ runner.test('adjustSpeed should work correctly with multiple videos', async () =
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
   // Create multiple videos with different sources
-  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video1.mp4' });
-  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site2.com/video2.mp4' });
-  const video3 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video3.mp4' });
+  const video1 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://site1.com/video1.mp4',
+  });
+  const video2 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://site2.com/video2.mp4',
+  });
+  const video3 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://site1.com/video3.mp4',
+  });
 
   // Set different speeds for each video
   actionHandler.adjustSpeed(video1, 1.5);
@@ -672,7 +699,6 @@ runner.test('adjustSpeed should work correctly with multiple videos', async () =
   assert.equal(video1.playbackRate, 1.5);
   assert.equal(video2.playbackRate, 2.0);
   assert.equal(video3.playbackRate, 1.25);
-
 
   // Verify global speed behavior - all videos share same preferred speed
   assert.equal(actionHandler.getPreferredSpeed(video1), 1.25);
@@ -687,8 +713,12 @@ runner.test('adjustSpeed should handle global mode with multiple videos', async 
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
-  const video1 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site1.com/video1.mp4' });
-  const video2 = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://site2.com/video2.mp4' });
+  const video1 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://site1.com/video1.mp4',
+  });
+  const video2 = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://site2.com/video2.mp4',
+  });
 
   // Change speed on first video
   actionHandler.adjustSpeed(video1, 1.8);
@@ -727,7 +757,7 @@ runner.test('adjustSpeed should handle edge cases and error conditions', async (
     videoSrc: 'test-video',
     tagName: 'VIDEO',
     created: Date.now(),
-    isActive: true
+    isActive: true,
   });
   actionHandler.adjustSpeed(videoNoIndicator, 1.5); // Should work but skip UI update
   assert.equal(videoNoIndicator.playbackRate, 1.5);
@@ -751,7 +781,9 @@ runner.test('adjustSpeed should handle complex force mode scenarios', async () =
 
   const actionHandler = new window.VSC.ActionHandler(config, null);
 
-  const video = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video.mp4' });
+  const video = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video.mp4',
+  });
 
   // External changes should be blocked and restored to global speed
   actionHandler.adjustSpeed(video, 3.0, { source: 'external' });
@@ -782,7 +814,7 @@ runner.test('reset action should use configured reset speed value', async () => 
 
   // Test reset memory toggle functionality with custom reset speed
   const mockVideo3 = createTestVideoWithController(config, actionHandler, { playbackRate: 1.5 });
-  
+
   // First reset should remember current speed and go to reset speed
   mockVideo3.playbackRate = 2.2;
   actionHandler.runAction('reset', 1.5); // Pass custom value
@@ -807,26 +839,36 @@ runner.test('lastSpeed should update during session even when rememberSpeed is f
   // Track storage saves
   const savedCalls = [];
   const originalSave = config.save;
-  config.save = function(data) {
+  config.save = function (data) {
     savedCalls.push({ ...data });
     return originalSave.call(config, data);
   };
 
-  const video = createTestVideoWithController(config, actionHandler, { currentSrc: 'https://example.com/video.mp4' });
-  
+  const video = createTestVideoWithController(config, actionHandler, {
+    currentSrc: 'https://example.com/video.mp4',
+  });
+
   // Change speed to 1.4
   await actionHandler.adjustSpeed(video, 1.4);
-  
+
   // lastSpeed should be updated in memory for session persistence
-  assert.equal(config.settings.lastSpeed, 1.4, 'lastSpeed should update in memory even with rememberSpeed=false');
-  
+  assert.equal(
+    config.settings.lastSpeed,
+    1.4,
+    'lastSpeed should update in memory even with rememberSpeed=false'
+  );
+
   // No storage saves should occur
   assert.equal(savedCalls.length, 0, 'No saves should occur when rememberSpeed is false');
-  
+
   // Simulate play event (which calls getTargetSpeed)
   const targetSpeed = video.vsc.getTargetSpeed(video);
-  assert.equal(targetSpeed, 1.4, 'getTargetSpeed should return updated lastSpeed for session persistence');
-  
+  assert.equal(
+    targetSpeed,
+    1.4,
+    'getTargetSpeed should return updated lastSpeed for session persistence'
+  );
+
   // Restore original save method
   config.save = originalSave;
 });
@@ -849,9 +891,9 @@ runner.test('reset action should work with keyboard event simulation', async () 
     target: document.body,
     getModifierState: () => false,
     preventDefault: () => {},
-    stopPropagation: () => {}
+    stopPropagation: () => {},
   });
-  
+
   assert.equal(mockVideo.playbackRate, 1.5); // Should use configured reset speed
 });
 

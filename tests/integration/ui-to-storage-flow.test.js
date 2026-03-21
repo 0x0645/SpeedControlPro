@@ -135,6 +135,8 @@ runner.test('Full flow: external change → force mode → restore → storage',
 runner.test('Full flow: mouse wheel → relative change → storage → UI', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+  config.settings.rememberSpeed = true;
+  config.settings.lastSpeed = 1.5;
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
@@ -209,6 +211,7 @@ runner.test(
 runner.test('Full flow: speed limits enforcement → clamping → correct storage', async () => {
   const config = window.VSC.videoSpeedConfig;
   await config.load();
+  config.settings.rememberSpeed = true;
 
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);

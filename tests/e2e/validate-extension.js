@@ -42,16 +42,16 @@ function validateExtension() {
   test('dist/options.js exists', existsSync(join(extensionRoot, 'dist/options.js')));
 
   // Check source structure (still needed for unit tests)
-  test('src/content/inject.js exists', existsSync(join(extensionRoot, 'src/content/inject.js')));
+  test('src/content/inject.ts exists', existsSync(join(extensionRoot, 'src/content/inject.ts')));
   test('src/core/ directory exists', existsSync(join(extensionRoot, 'src/core')));
   test('src/utils/ directory exists', existsSync(join(extensionRoot, 'src/utils')));
   test('src/ui/ directory exists', existsSync(join(extensionRoot, 'src/ui')));
 
   // Check key modules
-  test('VideoController exists', existsSync(join(extensionRoot, 'src/core/video-controller.js')));
-  test('Settings module exists', existsSync(join(extensionRoot, 'src/core/settings.js')));
-  test('ActionHandler exists', existsSync(join(extensionRoot, 'src/core/action-handler.js')));
-  test('ShadowDOM manager exists', existsSync(join(extensionRoot, 'src/ui/shadow-dom.js')));
+  test('VideoController exists', existsSync(join(extensionRoot, 'src/core/video-controller.ts')));
+  test('Settings module exists', existsSync(join(extensionRoot, 'src/core/settings.ts')));
+  test('ActionHandler exists', existsSync(join(extensionRoot, 'src/core/action-handler.ts')));
+  test('ShadowDOM manager exists', existsSync(join(extensionRoot, 'src/ui/shadow-dom.ts')));
 
   // Validate manifest.json structure
   try {
@@ -62,9 +62,9 @@ function validateExtension() {
       'Content scripts defined',
       manifest.content_scripts && manifest.content_scripts.length > 0
     );
-    test('Content script uses bundled file',
-      manifest.content_scripts[0].js &&
-      manifest.content_scripts[0].js[0] === 'dist/content.js'
+    test(
+      'Content script uses bundled file',
+      manifest.content_scripts[0].js && manifest.content_scripts[0].js[0] === 'dist/content.js'
     );
     test(
       'Required permissions present',
@@ -73,7 +73,7 @@ function validateExtension() {
     test(
       'Content script matches all sites',
       manifest.content_scripts[0].matches &&
-      manifest.content_scripts[0].matches.includes('https://*/*')
+        manifest.content_scripts[0].matches.includes('https://*/*')
     );
   } catch (error) {
     test('Manifest.json is valid JSON', false, error.message);
@@ -81,7 +81,7 @@ function validateExtension() {
 
   // Check main inject script
   try {
-    const injectScript = readFileSync(join(extensionRoot, 'src/content/inject.js'), 'utf8');
+    const injectScript = readFileSync(join(extensionRoot, 'src/content/inject.ts'), 'utf8');
 
     test('Inject script exports VSC_controller', injectScript.includes('window.VSC_controller'));
     test('Inject script initializes extension', injectScript.includes('initialize'));

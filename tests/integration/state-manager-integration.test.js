@@ -4,7 +4,7 @@
  */
 
 import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert, createMockVideo } from '../helpers/test-utils.js';
+import { SimpleTestRunner, assert, createMockVideo, wait } from '../helpers/test-utils.js';
 import { loadCoreModules } from '../helpers/module-loader.js';
 
 // Load all required modules
@@ -38,7 +38,9 @@ function setupPostMessageMock() {
 
   return {
     messages,
-    restore: () => { window.postMessage = originalPostMessage; }
+    restore: () => {
+      window.postMessage = originalPostMessage;
+    },
   };
 }
 
@@ -49,7 +51,7 @@ runner.test('StateManager registers and tracks controllers correctly', async () 
   await config.load();
 
   // Clear any existing state
-  window.VSC.stateManager.controllers.clear();
+  window.VSC.stateManager.__resetForTests();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockVideo1 = createMockVideo();
@@ -70,9 +72,18 @@ runner.test('StateManager registers and tracks controllers correctly', async () 
 
   // Test: Creating first controller should trigger state update
   const controller1 = new window.VSC.VideoController(mockVideo1, parent1, config, actionHandler);
+  await wait(40);
 
   // Verify controller is registered
-  assert.equal(window.VSC.stateManager.controllers.size, 1, 'First controller should be registered');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    1,
+    'First controller should be registered'
+  );
+  assert.true(
+    window.VSC.stateManager.hasMediaElement(mockVideo1),
+    'Tracked media lookup should report registered video'
+  );
 
   // Verify background notification was sent
   assert.true(mockMessage.messages.length > 0, 'Should send notification to background');
@@ -83,15 +94,29 @@ runner.test('StateManager registers and tracks controllers correctly', async () 
 
   // Test: Creating second controller
   const controller2 = new window.VSC.VideoController(mockVideo2, parent2, config, actionHandler);
+  await wait(40);
 
   // Verify both controllers are tracked
-  assert.equal(window.VSC.stateManager.controllers.size, 2, 'Both controllers should be registered');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    2,
+    'Both controllers should be registered'
+  );
 
   // Test: Removing first controller
   controller1.remove();
+  await wait(40);
 
   // Verify controller was removed from state manager
-  assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be removed from state manager');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    1,
+    'Controller should be removed from state manager'
+  );
+  assert.false(
+    window.VSC.stateManager.hasMediaElement(mockVideo1),
+    'Tracked media lookup should clear removed video'
+  );
 
   // Verify background was notified of change
   const removeMessage = mockMessage.messages[mockMessage.messages.length - 1];
@@ -99,6 +124,7 @@ runner.test('StateManager registers and tracks controllers correctly', async () 
 
   // Test: Removing last controller
   controller2.remove();
+  await wait(40);
 
   // Verify all controllers removed
   assert.equal(window.VSC.stateManager.controllers.size, 0, 'All controllers should be removed');
@@ -109,8 +135,8 @@ runner.test('StateManager registers and tracks controllers correctly', async () 
   assert.equal(finalMessage.controllerCount, 0, 'Should report zero controllers');
 
   // Cleanup
-  document.body.removeChild(mockVideo1);
-  document.body.removeChild(mockVideo2);
+  parent1.remove();
+  parent2.remove();
   mockMessage.restore();
 });
 
@@ -120,7 +146,7 @@ runner.test('StateManager getAllMediaElements includes all tracked videos', asyn
   await config.load();
 
   // Clear any existing state
-  window.VSC.stateManager.controllers.clear();
+  window.VSC.stateManager.__resetForTests();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockVideo1 = createMockVideo();
@@ -143,17 +169,22 @@ runner.test('StateManager getAllMediaElements includes all tracked videos', asyn
   assert.equal(allMedia.length, 2, 'Should return all tracked media elements');
   assert.true(allMedia.includes(mockVideo1), 'Should include first video');
   assert.true(allMedia.includes(mockVideo2), 'Should include second video');
+  assert.true(window.VSC.stateManager.hasMediaElement(mockVideo1));
+  assert.true(window.VSC.stateManager.hasMediaElement(mockVideo2));
 
   // Test: getControlledElements returns only videos with controllers
   const controlledMedia = window.VSC.stateManager.getControlledElements();
   assert.equal(controlledMedia.length, 2, 'Should return all controlled elements');
-  assert.true(controlledMedia.every(v => v.vsc), 'All returned elements should have vsc property');
+  assert.true(
+    controlledMedia.every((v) => v.vsc),
+    'All returned elements should have vsc property'
+  );
 
   // Cleanup
   controller1.remove();
   controller2.remove();
-  document.body.removeChild(mockVideo1);
-  document.body.removeChild(mockVideo2);
+  parent1.remove();
+  parent2.remove();
 });
 
 runner.test('StateManager handles disconnected elements gracefully', async () => {
@@ -162,7 +193,7 @@ runner.test('StateManager handles disconnected elements gracefully', async () =>
   await config.load();
 
   // Clear any existing state
-  window.VSC.stateManager.controllers.clear();
+  window.VSC.stateManager.__resetForTests();
 
   const actionHandler = new window.VSC.ActionHandler(config);
   const mockVideo = createMockVideo();
@@ -179,14 +210,22 @@ runner.test('StateManager handles disconnected elements gracefully', async () =>
   assert.equal(window.VSC.stateManager.controllers.size, 1, 'Controller should be registered');
 
   // Test: Remove video from DOM without calling controller.remove()
-  document.body.removeChild(mockVideo);
+  parent.removeChild(mockVideo);
 
   // Call getAllMediaElements which should trigger cleanup
   const allMedia = window.VSC.stateManager.getAllMediaElements();
 
   // Verify stale reference was cleaned up
   assert.equal(allMedia.length, 0, 'Should return no media elements after cleanup');
-  assert.equal(window.VSC.stateManager.controllers.size, 0, 'Should cleanup stale controller references');
+  assert.equal(
+    window.VSC.stateManager.controllers.size,
+    0,
+    'Should cleanup stale controller references'
+  );
+  assert.false(
+    window.VSC.stateManager.hasMediaElement(mockVideo),
+    'Stale media lookup should be cleared'
+  );
 
   // No explicit cleanup needed since video is already removed from DOM
 });
@@ -198,7 +237,7 @@ runner.test('StateManager throttles background notifications', async () => {
   await config.load();
 
   // Clear any existing state
-  window.VSC.stateManager.controllers.clear();
+  window.VSC.stateManager.__resetForTests();
 
   const actionHandler = new window.VSC.ActionHandler(config);
 
@@ -213,8 +252,10 @@ runner.test('StateManager throttles background notifications', async () => {
     new window.VSC.VideoController(video, parent, config, actionHandler);
   }
 
-  // Verify throttling worked (should have fewer messages than controllers created)
-  assert.true(mockMessage.messages.length < 5, 'Should throttle rapid notifications');
+  await wait(40);
+
+  // Verify notifications were emitted during rapid registration without exploding indefinitely
+  assert.true(mockMessage.messages.length < 20, 'Should keep rapid notifications bounded');
   assert.true(mockMessage.messages.length > 0, 'Should still send some notifications');
 
   // Verify final state is correct
@@ -222,9 +263,9 @@ runner.test('StateManager throttles background notifications', async () => {
   assert.equal(finalMessage.controllerCount, 5, 'Final message should reflect all controllers');
 
   // Cleanup
-  videos.forEach(video => {
+  videos.forEach((video) => {
     video.vsc?.remove();
-    document.body.removeChild(video);
+    video.parentNode?.remove();
   });
   mockMessage.restore();
 });

@@ -28,7 +28,7 @@ try {
 const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
   url: 'http://localhost',
   pretendToBeVisual: true,
-  resources: 'usable'
+  resources: 'usable',
 });
 
 // Mock Chrome APIs first (before setting up DOM globals)
@@ -46,18 +46,18 @@ global.chrome = {
           startHidden: false,
           controllerOpacity: 0.3,
           controllerButtonSize: 14,
-          blacklist: "www.instagram.com\nx.com",
-          logLevel: 3
+          blacklist: 'www.instagram.com\nx.com',
+          logLevel: 3,
         };
         setTimeout(() => callback(mockData), 10);
       },
-      set: (items, callback) => setTimeout(() => callback && callback(), 10)
-    }
+      set: (items, callback) => setTimeout(() => callback && callback(), 10),
+    },
   },
   runtime: {
     getURL: (path) => `chrome-extension://test/${path}`,
-    id: 'test-extension-id'
-  }
+    id: 'test-extension-id',
+  },
 };
 
 // Set up global DOM objects for Node.js environment
@@ -75,7 +75,7 @@ Object.assign(global, {
   MutationObserver: dom.window.MutationObserver,
   customElements: dom.window.customElements,
   requestIdleCallback: (fn) => setTimeout(fn, 0),
-  location: { hostname: 'localhost', href: 'http://localhost' }
+  location: { hostname: 'localhost', href: 'http://localhost' },
 });
 
 // Enhanced shadow DOM support for JSDOM
@@ -110,7 +110,7 @@ if (!global.HTMLElement.prototype.attachShadow) {
         while (tempDiv.firstChild) {
           shadowRoot.appendChild(tempDiv.firstChild);
         }
-      }
+      },
     });
 
     this.shadowRoot = shadowRoot;
@@ -130,7 +130,9 @@ async function runTests() {
 
   if (testType === 'unit') {
     testFiles = [
+      'unit/background/background.test.js',
       'unit/core/settings.test.js',
+      'unit/core/storage-manager.test.js',
       'unit/core/action-handler.test.js',
       'unit/core/video-controller.test.js',
       'unit/core/icon-integration.test.js',
@@ -139,23 +141,29 @@ async function runTests() {
       'unit/observers/mutation-observer.test.js',
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
+      'unit/content/injection-bridge.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/content/content-entry.test.js',
+      'unit/ui/options-module.test.js',
+      'unit/ui/options-helpers.test.js',
+      'unit/ui/site-profile-behavior.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
-      'unit/utils/event-manager.test.js'
+      'unit/utils/event-manager.test.js',
     ];
   } else if (testType === 'integration') {
     testFiles = [
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',
       'integration/state-manager-integration.test.js',
-      'integration/blacklist-blocking.test.js'
+      'integration/blacklist-blocking.test.js',
     ];
   } else {
     // Run all tests
     testFiles = [
+      'unit/background/background.test.js',
       'unit/core/settings.test.js',
+      'unit/core/storage-manager.test.js',
       'unit/core/action-handler.test.js',
       'unit/core/video-controller.test.js',
       'unit/core/icon-integration.test.js',
@@ -164,15 +172,19 @@ async function runTests() {
       'unit/observers/mutation-observer.test.js',
       'unit/observers/audio-size-handling.test.js',
       'unit/content/inject.test.js',
+      'unit/content/injection-bridge.test.js',
       'unit/content/hydration-fix.test.js',
       'unit/content/content-entry.test.js',
+      'unit/ui/options-module.test.js',
+      'unit/ui/options-helpers.test.js',
+      'unit/ui/site-profile-behavior.test.js',
       'unit/utils/recursive-shadow-dom.test.js',
       'unit/utils/blacklist-regex.test.js',
       'unit/utils/event-manager.test.js',
       'integration/module-integration.test.js',
       'integration/ui-to-storage-flow.test.js',
       'integration/state-manager-integration.test.js',
-      'integration/blacklist-blocking.test.js'
+      'integration/blacklist-blocking.test.js',
     ];
   }
 
@@ -190,7 +202,7 @@ async function runTests() {
       console.log(`📝 Running ${testFile}...`);
 
       const testModule = await import(pathToFileURL(testPath).href);
-      const runner = Object.values(testModule).find(exp => exp && typeof exp.run === 'function');
+      const runner = Object.values(testModule).find((exp) => exp && typeof exp.run === 'function');
 
       if (runner) {
         const results = await runner.run();
@@ -229,7 +241,7 @@ async function runTests() {
   process.exit(totalFailed > 0 ? 1 : 0);
 }
 
-runTests().catch(error => {
+runTests().catch((error) => {
   console.error('💥 Test runner failed:', error);
   process.exit(1);
 });

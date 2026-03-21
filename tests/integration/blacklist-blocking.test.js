@@ -6,7 +6,7 @@
 import { installChromeMock, cleanupChromeMock, resetMockStorage } from '../helpers/chrome-mock.js';
 import { SimpleTestRunner, assert, createMockVideo, createMockDOM } from '../helpers/test-utils.js';
 import { loadCoreModules } from '../helpers/module-loader.js';
-import { isBlacklisted } from '../../src/utils/blacklist.js';
+import { isBlacklisted } from '../../src/utils/blacklist.ts';
 
 await loadCoreModules();
 
@@ -33,7 +33,7 @@ runner.afterEach(() => {
   Object.defineProperty(global.location, 'href', {
     value: originalHref,
     writable: true,
-    configurable: true
+    configurable: true,
   });
 });
 
@@ -41,7 +41,7 @@ function setTestURL(url) {
   Object.defineProperty(global.location, 'href', {
     value: url,
     writable: true,
-    configurable: true
+    configurable: true,
   });
 }
 
@@ -61,7 +61,11 @@ runner.test('Controller should NOT initialize when youtube.com is blacklisted', 
     mockDOM.container.appendChild(mockVideo);
 
     // Video should NOT have a controller attached
-    assert.equal(mockVideo.vsc, undefined, 'Video should not have controller when site is blacklisted');
+    assert.equal(
+      mockVideo.vsc,
+      undefined,
+      'Video should not have controller when site is blacklisted'
+    );
   }
 });
 
@@ -101,7 +105,7 @@ runner.test('Settings passed to page context should not contain blacklist or ena
     controllerOpacity: 0.3,
     controllerButtonSize: 14,
     keyBindings: [],
-    logLevel: 3
+    logLevel: 3,
   };
 
   // Simulate content-entry.js stripping sensitive keys before injection
@@ -132,21 +136,21 @@ meet.google.com`;
     'https://x.com/user/status/456',
     'https://imgur.com/gallery/abc',
     'https://teams.microsoft.com/meeting/xyz',
-    'https://meet.google.com/abc-def-ghi'
+    'https://meet.google.com/abc-def-ghi',
   ];
 
   const allowedSites = [
     'https://www.youtube.com/watch?v=123',
     'https://www.netflix.com/watch/456',
-    'https://www.example.com/'
+    'https://www.example.com/',
   ];
 
-  blockedSites.forEach(url => {
+  blockedSites.forEach((url) => {
     const blocked = isBlacklisted(defaultBlacklist, url);
     assert.equal(blocked, true, `${url} should be blocked by default blacklist`);
   });
 
-  allowedSites.forEach(url => {
+  allowedSites.forEach((url) => {
     const blocked = isBlacklisted(defaultBlacklist, url);
     assert.equal(blocked, false, `${url} should NOT be blocked by default blacklist`);
   });

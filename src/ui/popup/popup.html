@@ -1,67 +1,109 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpeedControl Pro</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section class="hero-panel">
+        <div class="hero-header">
+          <p class="eyebrow">Current speed</p>
+          <div class="hero-controls">
+            <button
+              id="disable"
+              class="icon-btn power-btn"
+              title="Toggle extension"
+              aria-label="Toggle extension"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+            </button>
+            <button id="config" class="icon-btn" title="Settings" aria-label="Open settings">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-<head>
-  <title>SpeedControl Pro</title>
-  <link rel="stylesheet" href="popup.css" />
-  <script src="popup.js"></script>
-</head>
+        <div class="speed-stage">
+          <button id="speed-decrease" class="adj-btn" data-delta="-0.1" aria-label="Decrease speed">
+            <span>&minus;</span>
+          </button>
+          <button id="speed-display" class="speed-display" title="Jump to preferred speed">
+            1.00
+          </button>
+          <button id="speed-increase" class="adj-btn" data-delta="0.1" aria-label="Increase speed">
+            <span>+</span>
+          </button>
+        </div>
 
-<body>
-  <div class="popup-container">
-    <div class="speed-section">
-      <div class="speed-hero">
-        <button id="speed-decrease" class="adj-btn" data-delta="-0.1">
-          <span>&minus;</span>
-        </button>
-        <div id="speed-display" class="speed-display" title="Click to reset">1.00</div>
-        <button id="speed-increase" class="adj-btn" data-delta="0.1">
-          <span>+</span>
-        </button>
-      </div>
+        <div class="preset-grid">
+          <button class="preset-btn" data-speed="0.5">0.5x</button>
+          <button class="preset-btn" data-speed="1.0">1x</button>
+          <button class="preset-btn" data-speed="1.25">1.25x</button>
+          <button class="preset-btn" data-speed="1.5">1.5x</button>
+          <button class="preset-btn" data-speed="2.0">2x</button>
+        </div>
+      </section>
 
-      <div class="preset-grid">
-        <button class="preset-btn" data-speed="0.5">0.5</button>
-        <button class="preset-btn" data-speed="0.75">0.75</button>
-        <button class="preset-btn" data-speed="1.0">1</button>
-        <button class="preset-btn" data-speed="1.25">1.25</button>
-        <button class="preset-btn" data-speed="1.5">1.5</button>
-        <button class="preset-btn" data-speed="1.75">1.75</button>
-        <button class="preset-btn" data-speed="2.0">2</button>
-        <button class="preset-btn" data-speed="2.5">2.5</button>
-      </div>
-    </div>
+      <section class="surface-panel site-panel">
+        <div class="site-panel-header">
+          <p class="section-kicker">Website profile</p>
+          <button id="site-profile-edit" class="site-link" title="Open site profile settings">
+            Edit &rarr;
+          </button>
+        </div>
+        <h2 id="site-hostname" class="site-hostname"></h2>
 
-    <div class="site-section">
-      <div class="site-row">
-        <span id="site-hostname" class="site-hostname"></span>
-        <button id="site-speed-toggle" class="site-toggle" title="Save speed for this site">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span id="site-speed-label">Save for this site</span>
-        </button>
-      </div>
-    </div>
+        <p id="site-profile-summary" class="site-profile-summary">
+          Save a speed for this site or open the full rule editor.
+        </p>
 
-    <div class="footer">
-      <div id="status" class="status hide"></div>
-      <div class="footer-controls">
-        <button id="disable" class="icon-btn power-btn" title="Toggle Extension">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-            <line x1="12" y1="2" x2="12" y2="12" />
-          </svg>
-        </button>
-        <button id="config" class="icon-btn" title="Settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-</body>
+        <div class="site-actions">
+          <button
+            id="site-speed-toggle"
+            class="site-action-primary"
+            title="Save speed for this site"
+          >
+            Save current speed
+          </button>
+          <button
+            id="site-profile-clear"
+            class="site-action-secondary hide"
+            title="Use global defaults for this site"
+          >
+            Use global rules
+          </button>
+        </div>
+      </section>
 
+      <div id="status" class="status hide" role="status" aria-live="polite"></div>
+    </main>
+  </body>
 </html>

@@ -19,7 +19,7 @@ const SMALL_AUDIO_SIZE = {
 };
 
 const SMALL_VIDEO_SIZE = {
-  WIDTH: 40, // Below VIDEO_MIN_WIDTH (50)  
+  WIDTH: 40, // Below VIDEO_MIN_WIDTH (50)
   HEIGHT: 30, // Below VIDEO_MIN_HEIGHT (50)
 };
 
@@ -146,7 +146,10 @@ runner.test('MediaElementObserver should allow small audio when audioBoolean ena
   const siteHandler = new window.VSC.BaseSiteHandler();
   const observer = new window.VSC.MediaElementObserver(config, siteHandler);
 
-  const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
+  const smallAudio = createMockAudio({
+    width: SMALL_AUDIO_SIZE.WIDTH,
+    height: SMALL_AUDIO_SIZE.HEIGHT,
+  });
   document.body.appendChild(smallAudio);
 
   const isValid = observer.isValidMediaElement(smallAudio);
@@ -156,25 +159,31 @@ runner.test('MediaElementObserver should allow small audio when audioBoolean ena
   document.body.removeChild(smallAudio);
 });
 
-runner.test('MediaElementObserver should reject small audio when audioBoolean disabled', async () => {
-  const config = window.VSC.videoSpeedConfig;
-  await config.load();
+runner.test(
+  'MediaElementObserver should reject small audio when audioBoolean disabled',
+  async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
 
-  // Disable audio support
-  config.settings.audioBoolean = false;
+    // Disable audio support
+    config.settings.audioBoolean = false;
 
-  const siteHandler = new window.VSC.BaseSiteHandler();
-  const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    const siteHandler = new window.VSC.BaseSiteHandler();
+    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
 
-  const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
-  document.body.appendChild(smallAudio);
+    const smallAudio = createMockAudio({
+      width: SMALL_AUDIO_SIZE.WIDTH,
+      height: SMALL_AUDIO_SIZE.HEIGHT,
+    });
+    document.body.appendChild(smallAudio);
 
-  const isValid = observer.isValidMediaElement(smallAudio);
-  assert.false(isValid, 'Small audio element should be rejected when audioBoolean is disabled');
+    const isValid = observer.isValidMediaElement(smallAudio);
+    assert.false(isValid, 'Small audio element should be rejected when audioBoolean is disabled');
 
-  // Cleanup
-  document.body.removeChild(smallAudio);
-});
+    // Cleanup
+    document.body.removeChild(smallAudio);
+  }
+);
 
 runner.test('VideoController should start visible for small audio elements', async () => {
   const config = window.VSC.videoSpeedConfig;
@@ -187,7 +196,10 @@ runner.test('VideoController should start visible for small audio elements', asy
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
+  const smallAudio = createMockAudio({
+    width: SMALL_AUDIO_SIZE.WIDTH,
+    height: SMALL_AUDIO_SIZE.HEIGHT,
+  });
   mockDOM.container.appendChild(smallAudio);
 
   // Use MediaElementObserver to determine if controller should start hidden
@@ -195,7 +207,13 @@ runner.test('VideoController should start visible for small audio elements', asy
   const observer = new window.VSC.MediaElementObserver(config, siteHandler);
   const shouldStartHidden = observer.shouldStartHidden(smallAudio);
 
-  const controller = new window.VSC.VideoController(smallAudio, null, config, actionHandler, shouldStartHidden);
+  const controller = new window.VSC.VideoController(
+    smallAudio,
+    null,
+    config,
+    actionHandler,
+    shouldStartHidden
+  );
 
   // Check that controller was created
   assert.exists(controller.div, 'Controller should be created for small audio');
@@ -264,7 +282,7 @@ runner.test('Display toggle should work with audio controllers', async () => {
 
   // Clear state manager
   if (window.VSC && window.VSC.stateManager) {
-    window.VSC.stateManager.controllers.clear();
+    window.VSC.stateManager.__resetForTests();
   }
 
   // Enable audio support
@@ -273,7 +291,10 @@ runner.test('Display toggle should work with audio controllers', async () => {
   const eventManager = new window.VSC.EventManager(config, null);
   const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-  const smallAudio = createMockAudio({ width: SMALL_AUDIO_SIZE.WIDTH, height: SMALL_AUDIO_SIZE.HEIGHT });
+  const smallAudio = createMockAudio({
+    width: SMALL_AUDIO_SIZE.WIDTH,
+    height: SMALL_AUDIO_SIZE.HEIGHT,
+  });
   mockDOM.container.appendChild(smallAudio);
 
   // Use MediaElementObserver to determine if controller should start hidden
@@ -281,7 +302,13 @@ runner.test('Display toggle should work with audio controllers', async () => {
   const observer = new window.VSC.MediaElementObserver(config, siteHandler);
   const shouldStartHidden = observer.shouldStartHidden(smallAudio);
 
-  const controller = new window.VSC.VideoController(smallAudio, mockDOM.container, config, actionHandler, shouldStartHidden);
+  const controller = new window.VSC.VideoController(
+    smallAudio,
+    mockDOM.container,
+    config,
+    actionHandler,
+    shouldStartHidden
+  );
 
   // Verify controller was created properly
   assert.exists(controller, 'Controller should exist');
@@ -301,18 +328,24 @@ runner.test('Display toggle should work with audio controllers', async () => {
   actionHandler.runAction('display', 0, null);
 
   // Should now be hidden after first toggle
-  assert.true(controller.div.classList.contains('vsc-hidden'), 'Should be hidden after first toggle');
+  assert.true(
+    controller.div.classList.contains('vsc-hidden'),
+    'Should be hidden after first toggle'
+  );
   assert.true(controller.div.classList.contains('vsc-manual'), 'Should have manual class');
 
   // Toggle again
   actionHandler.runAction('display', 0, null);
 
   // Should be visible again after second toggle
-  assert.false(controller.div.classList.contains('vsc-hidden'), 'Should be visible after second toggle');
+  assert.false(
+    controller.div.classList.contains('vsc-hidden'),
+    'Should be visible after second toggle'
+  );
 
   // Cleanup
   controller.remove();
   mockDOM.container.removeChild(smallAudio);
 });
 
-export default runner; 
+export default runner;

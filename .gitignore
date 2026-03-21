@@ -4,6 +4,7 @@
 .agent
 .idea
 .AGENT.md
+.impeccable.md
 CLAUDE*.md
 local
 dist
