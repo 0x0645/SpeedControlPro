@@ -36,7 +36,7 @@ export class YouTubeHandler extends BaseSiteHandler {
     return ['.html5-video-player', '#movie_player', '.ytp-player-content'];
   }
 
-  detectSpecialVideos(document: Document): HTMLMediaElement[] {
+  detectSpecialVideos(document: Document | Element): HTMLMediaElement[] {
     const videos: HTMLMediaElement[] = [];
 
     try {

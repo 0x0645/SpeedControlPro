@@ -4,22 +4,19 @@ import { stateManager } from './state-manager';
 import { logger } from '../utils/logger';
 import { formatSpeed } from '../utils/constants';
 import { siteHandlerManager } from '../site-handlers/index';
-
-type VscMedia = HTMLMediaElement & {
-  vsc?: any;
-};
+import type { VscMedia, IVideoSpeedConfig, IActionHandler } from '../types/settings';
 
 export class VideoController {
   video!: VscMedia;
   parent!: HTMLElement | null;
-  config: any;
-  actionHandler: any;
-  controlsManager: any;
+  config!: IVideoSpeedConfig;
+  actionHandler!: IActionHandler;
+  controlsManager!: ControlsManager;
   shouldStartHidden!: boolean;
   controllerId!: string;
   speedBeforeReset!: number | null;
   div!: HTMLElement;
-  speedIndicator: any;
+  speedIndicator!: { textContent: string } | null;
   handlePlay?: EventListener;
   handleSeek?: EventListener;
   targetObserver?: MutationObserver;
@@ -27,12 +24,12 @@ export class VideoController {
   constructor(
     target: VscMedia,
     parent: HTMLElement | null,
-    config: any,
-    actionHandler: any,
+    config: IVideoSpeedConfig,
+    actionHandler: IActionHandler,
     shouldStartHidden = false
   ) {
     if (target.vsc) {
-      return target.vsc;
+      return target.vsc as unknown as VideoController;
     }
 
     this.video = target;
@@ -44,7 +41,7 @@ export class VideoController {
     this.controllerId = this.generateControllerId(target);
     this.speedBeforeReset = null;
 
-    target.vsc = this;
+    target.vsc = this as unknown as import('../types/settings').VscAttachment;
 
     if (stateManager) {
       stateManager.registerController(this);
@@ -72,7 +69,7 @@ export class VideoController {
 
   getTargetSpeed(media: HTMLMediaElement = this.video): number {
     const hostname = location.hostname;
-    const speed = this.config.getEffectiveSetting('speed', hostname) || 1.0;
+    const speed = (this.config.getEffectiveSetting('speed', hostname) as number) || 1.0;
     logger.debug(`Target speed for ${hostname}: ${speed}`);
     return speed;
   }
@@ -110,8 +107,8 @@ export class VideoController {
       top: '0px',
       left: '0px',
       speed,
-      opacity: this.config.getEffectiveSetting('controllerOpacity', hostname),
-      buttonSize: this.config.getEffectiveSetting('controllerButtonSize', hostname),
+      opacity: this.config.getEffectiveSetting('controllerOpacity', hostname) as number | undefined,
+      buttonSize: this.config.getEffectiveSetting('controllerButtonSize', hostname) as number | undefined,
     });
 
     this.controlsManager.setupControlEvents(shadow, this.video);
@@ -131,19 +128,19 @@ export class VideoController {
       this.video
     );
 
+    const point = positioning.insertionPoint;
+    if (!point) return;
+
     switch (positioning.insertionMethod) {
       case 'beforeParent':
-        positioning.insertionPoint.parentElement.insertBefore(fragment, positioning.insertionPoint);
+        point.parentElement?.insertBefore(fragment, point);
         break;
       case 'afterParent':
-        positioning.insertionPoint.parentElement.insertBefore(
-          fragment,
-          positioning.insertionPoint.nextSibling
-        );
+        point.parentElement?.insertBefore(fragment, point.nextSibling);
         break;
       case 'firstChild':
       default:
-        positioning.insertionPoint.insertBefore(fragment, positioning.insertionPoint.firstChild);
+        point.insertBefore(fragment, point.firstChild);
         break;
     }
 

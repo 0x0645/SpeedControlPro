@@ -24,19 +24,13 @@ import {
 } from './action-handler/playback-actions';
 import { logger } from '../utils/logger';
 import { DragHandler } from '../ui/drag-handler';
-
-type VscMedia = HTMLMediaElement & {
-  vsc?: {
-    div?: HTMLElement;
-    speedIndicator?: { textContent: string };
-  };
-};
+import type { VscMedia, IVideoSpeedConfig, IEventManager } from '../types/settings';
 
 export class ActionHandler {
-  config: any;
-  eventManager: any;
+  config: IVideoSpeedConfig;
+  eventManager: IEventManager | null;
 
-  constructor(config: any, eventManager: any) {
+  constructor(config: IVideoSpeedConfig, eventManager: IEventManager | null) {
     this.config = config;
     this.eventManager = eventManager;
   }
@@ -81,7 +75,7 @@ export class ActionHandler {
     return resolveForcedSpeed(targetSpeed, source, this.config);
   }
 
-  runAction(action: string, value: any, e?: Event | null): void {
+  runAction(action: string, value: number, e?: Event | null): void {
     const mediaTags = this.getControlledMedia() as VscMedia[];
     const targetController = this.getTargetControllerFromEvent(e);
 
@@ -95,7 +89,7 @@ export class ActionHandler {
     });
   }
 
-  executeAction(action: string, value: any, video: VscMedia, e?: Event | null): void {
+  executeAction(action: string, value: number, video: VscMedia, e?: Event | null): void {
     switch (action) {
       case 'rewind':
         logger.debug('Rewind');
@@ -158,7 +152,7 @@ export class ActionHandler {
         break;
       case 'RESET_SPEED': {
         logger.info('Resetting speed');
-        const preferredSpeed = this.config.getKeyBinding('fast') || 1.0;
+        const preferredSpeed = (this.config.getKeyBinding('fast') as number) || 1.0;
         this.adjustSpeed(video, preferredSpeed, { source: 'internal' });
         break;
       }
@@ -207,7 +201,7 @@ export class ActionHandler {
     video: VscMedia,
     value: number,
     options: { relative?: boolean; source?: string } = {}
-  ): any {
+  ): void {
     return logger.withContext(video, () => {
       const { relative = false, source = 'internal' } = options;
 
@@ -243,7 +237,7 @@ export class ActionHandler {
   }
 
   getPreferredSpeed(_video: HTMLMediaElement): number {
-    return this.config.getEffectiveSetting('speed', location.hostname) || 1.0;
+    return (this.config.getEffectiveSetting('speed', location.hostname) as number) || 1.0;
   }
 
   setSpeed(video: VscMedia, speed: number, source = 'internal'): void {

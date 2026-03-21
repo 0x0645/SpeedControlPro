@@ -2,6 +2,7 @@ import { inIframe } from './dom-utils';
 import { logger } from './logger';
 import { stateManager } from '../core/state-manager';
 import { SPEED_LIMITS } from './constants';
+import type { IVideoSpeedConfig, IActionHandler, KeyBinding, VscMedia } from '../types/settings';
 
 type ManagedListener = {
   type: string;
@@ -12,14 +13,14 @@ type ManagedListener = {
 export class EventManager {
   static COOLDOWN_MS = 200;
 
-  config: any;
-  actionHandler: any;
+  config: IVideoSpeedConfig;
+  actionHandler: IActionHandler | null;
   listeners: Map<Document, ManagedListener[]>;
   coolDown: ReturnType<typeof setTimeout> | false;
   timer: ReturnType<typeof setTimeout> | null;
   lastKeyEventSignature: string | null;
 
-  constructor(config: any, actionHandler: any) {
+  constructor(config: IVideoSpeedConfig, actionHandler: IActionHandler | null) {
     this.config = config;
     this.actionHandler = actionHandler;
     this.listeners = new Map();
@@ -88,11 +89,11 @@ export class EventManager {
       return false;
     }
 
-    const effectiveKeyBindings = this.config.getEffectiveSetting('keyBindings', location.hostname);
-    const keyBinding = effectiveKeyBindings.find((item: any) => item.key === keyCode);
+    const effectiveKeyBindings = this.config.getEffectiveSetting('keyBindings', location.hostname) as KeyBinding[] | null;
+    const keyBinding = effectiveKeyBindings?.find((item: KeyBinding) => item.key === keyCode);
 
     if (keyBinding) {
-      this.actionHandler.runAction(keyBinding.action, keyBinding.value, event);
+      this.actionHandler?.runAction(keyBinding.action, keyBinding.value, event);
 
       if (keyBinding.force === true || keyBinding.force === 'true') {
         event.preventDefault();
@@ -147,7 +148,7 @@ export class EventManager {
     if (this.coolDown) {
       logger.debug('Rate change event blocked by cooldown');
 
-      const video = (event.composedPath ? event.composedPath()[0] : event.target) as any;
+      const video = (event.composedPath ? event.composedPath()[0] : event.target) as VscMedia;
       if (video.vsc && this.config.settings.lastSpeed !== undefined) {
         const authoritativeSpeed = this.config.settings.lastSpeed;
         if (Math.abs(video.playbackRate - authoritativeSpeed) > 0.01) {
@@ -162,7 +163,7 @@ export class EventManager {
       return;
     }
 
-    const video = (event.composedPath ? event.composedPath()[0] : event.target) as any;
+    const video = (event.composedPath ? event.composedPath()[0] : event.target) as VscMedia;
     if (!video.vsc) {
       logger.debug('Skipping ratechange - no VSC controller attached');
       return;

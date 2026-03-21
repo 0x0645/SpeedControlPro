@@ -1,5 +1,6 @@
 import { stateManager } from '../state-manager';
 import { logger } from '../../utils/logger';
+import type { VscMedia } from '../../types/settings';
 
 function getControlledMedia(): HTMLMediaElement[] {
   return stateManager ? stateManager.getControlledElements() : [];
@@ -83,7 +84,7 @@ function isAudioController(controller: HTMLElement): boolean {
   const mediaElements = getControlledMedia();
 
   for (const media of mediaElements) {
-    if ((media as any).vsc && (media as any).vsc.div === controller) {
+    if ((media as VscMedia).vsc && (media as VscMedia).vsc!.div === controller) {
       return media.tagName === 'AUDIO';
     }
   }

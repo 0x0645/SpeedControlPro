@@ -1,15 +1,16 @@
 import { logger } from '../utils/logger';
+import type { IActionHandler, IVideoSpeedConfig } from '../types/settings';
 
 export class ControlsManager {
-  actionHandler: any;
-  config: any;
+  actionHandler: IActionHandler;
+  config: IVideoSpeedConfig;
 
-  constructor(actionHandler: any, config: any) {
+  constructor(actionHandler: IActionHandler, config: IVideoSpeedConfig) {
     this.actionHandler = actionHandler;
     this.config = config;
   }
 
-  setupControlEvents(shadow: ShadowRoot, video: HTMLVideoElement): void {
+  setupControlEvents(shadow: ShadowRoot, video: HTMLMediaElement): void {
     this.setupDragHandler(shadow);
     this.setupButtonHandlers(shadow);
     this.setupWheelHandler(shadow, video);
@@ -22,7 +23,7 @@ export class ControlsManager {
       'mousedown',
       (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        this.actionHandler.runAction(target.dataset['action'], false, e);
+        this.actionHandler.runAction(target.dataset['action'] ?? '', false, e);
         e.stopPropagation();
         e.preventDefault();
       },
@@ -37,8 +38,8 @@ export class ControlsManager {
         (e: Event) => {
           const target = e.target as HTMLElement;
           this.actionHandler.runAction(
-            target.dataset['action'],
-            this.config.getKeyBinding(target.dataset['action']),
+            target.dataset['action'] ?? '',
+            this.config.getKeyBinding(target.dataset['action'] ?? ''),
             e
           );
           e.stopPropagation();
@@ -56,7 +57,7 @@ export class ControlsManager {
     });
   }
 
-  setupWheelHandler(shadow: ShadowRoot, video: HTMLVideoElement): void {
+  setupWheelHandler(shadow: ShadowRoot, video: HTMLMediaElement): void {
     const controller = shadow.querySelector('#controller') as HTMLElement;
 
     controller.addEventListener(

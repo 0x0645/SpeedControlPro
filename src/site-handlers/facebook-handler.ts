@@ -9,7 +9,7 @@ export class FacebookHandler extends BaseSiteHandler {
   }
 
   getControllerPosition(parent: HTMLElement, _video: HTMLElement) {
-    let targetParent: any = parent;
+    let targetParent: HTMLElement | null = parent;
 
     try {
       targetParent =

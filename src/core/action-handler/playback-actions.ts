@@ -5,6 +5,7 @@ import {
 } from './controller-actions';
 import { siteHandlerManager } from '../../site-handlers/index';
 import { logger } from '../../utils/logger';
+import type { VscMedia, IActionHandler, IEventManager } from '../../types/settings';
 
 function seek(video: HTMLMediaElement, seekSeconds: number): void {
   siteHandlerManager.handleSeek(video, seekSeconds);
@@ -21,10 +22,10 @@ function pause(video: HTMLMediaElement): void {
 }
 
 function resetSpeed(
-  video: HTMLMediaElement & { vsc?: any },
+  video: VscMedia,
   target: number,
-  actionHandler: { adjustSpeed: (video: HTMLMediaElement, speed: number) => void },
-  eventManager?: { showController: (controller: HTMLElement) => void } | null
+  actionHandler: IActionHandler,
+  eventManager?: IEventManager | null
 ): void {
   showControllerForMedia(video, eventManager);
 
@@ -38,7 +39,7 @@ function resetSpeed(
   if (currentSpeed === target) {
     if (video.vsc.speedBeforeReset !== null) {
       logger.info(`Restoring remembered speed: ${video.vsc.speedBeforeReset}`);
-      const rememberedSpeed = video.vsc.speedBeforeReset;
+      const rememberedSpeed = video.vsc.speedBeforeReset!;
       video.vsc.speedBeforeReset = null;
       actionHandler.adjustSpeed(video, rememberedSpeed);
     } else {
@@ -65,14 +66,14 @@ function volumeDown(video: HTMLMediaElement, value: number): void {
   video.volume = Math.max(0, Number((video.volume - value).toFixed(2)));
 }
 
-function setMark(video: HTMLMediaElement & { vsc?: any }): void {
+function setMark(video: VscMedia): void {
   logger.debug('Adding marker');
-  video.vsc.mark = video.currentTime;
+  if (video.vsc) video.vsc.mark = video.currentTime;
 }
 
-function jumpToMark(video: HTMLMediaElement & { vsc?: any }): void {
+function jumpToMark(video: VscMedia): void {
   logger.debug('Recalling marker');
-  if (video.vsc.mark && typeof video.vsc.mark === 'number') {
+  if (video.vsc?.mark && typeof video.vsc.mark === 'number') {
     video.currentTime = video.vsc.mark;
   }
 }

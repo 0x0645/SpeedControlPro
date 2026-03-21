@@ -1,11 +1,13 @@
 import { findMediaElements, findShadowMedia } from '../utils/dom-utils';
 import { logger } from '../utils/logger';
+import type { IVideoSpeedConfig } from '../types/settings';
+import type { SiteHandlerManager } from '../site-handlers/index';
 
 export class MediaElementObserver {
-  config: any;
-  siteHandler: any;
+  config: IVideoSpeedConfig;
+  siteHandler: SiteHandlerManager;
 
-  constructor(config: any, siteHandler: any) {
+  constructor(config: IVideoSpeedConfig, siteHandler: SiteHandlerManager) {
     this.config = config;
     this.siteHandler = siteHandler;
   }
@@ -146,7 +148,7 @@ export class MediaElementObserver {
         return true;
       }
 
-      if ((media as any).disabled || media.style.pointerEvents === 'none') {
+      if ((media as HTMLMediaElement & { disabled?: boolean }).disabled || media.style.pointerEvents === 'none') {
         logger.debug('Audio controller hidden - element disabled or no pointer events');
         return true;
       }
@@ -167,7 +169,7 @@ export class MediaElementObserver {
   }
 
   findControllerParent(media: HTMLMediaElement): HTMLElement | null {
-    const positioning = this.siteHandler.getControllerPosition(media.parentElement, media);
-    return positioning.targetParent || media.parentElement;
+    const positioning = this.siteHandler.getControllerPosition(media.parentElement!, media);
+    return (positioning.targetParent as HTMLElement | null) || media.parentElement;
   }
 }

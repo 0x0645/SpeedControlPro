@@ -1,8 +1,10 @@
 import { findVideoParent } from '../utils/dom-utils';
 import { logger } from '../utils/logger';
+import type { VscMedia } from '../types/settings';
 
 export class DragHandler {
-  static handleDrag(video: any, e: MouseEvent): void {
+  static handleDrag(video: VscMedia, e: MouseEvent): void {
+    if (!video.vsc?.div) return;
     const controller = video.vsc.div as HTMLElement & { shadowRoot: ShadowRoot };
     const shadowController = controller.shadowRoot.querySelector('#controller') as HTMLElement;
     const parentElement = findVideoParent(controller) as HTMLElement;

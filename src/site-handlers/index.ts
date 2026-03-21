@@ -7,8 +7,8 @@ import { AmazonHandler } from './amazon-handler';
 import { AppleHandler } from './apple-handler';
 
 export class SiteHandlerManager {
-  currentHandler: any = null;
-  availableHandlers: any[];
+  currentHandler: BaseSiteHandler | null = null;
+  availableHandlers: (typeof BaseSiteHandler & { matches(): boolean })[];
 
   constructor() {
     this.availableHandlers = [
@@ -20,14 +20,14 @@ export class SiteHandlerManager {
     ];
   }
 
-  getCurrentHandler(): any {
+  getCurrentHandler(): BaseSiteHandler {
     if (!this.currentHandler) {
       this.currentHandler = this.detectHandler();
     }
     return this.currentHandler;
   }
 
-  detectHandler(): any {
+  detectHandler(): BaseSiteHandler {
     for (const HandlerClass of this.availableHandlers) {
       if (HandlerClass.matches()) {
         logger.info(`Using ${HandlerClass.name} for ${location.hostname}`);
@@ -59,7 +59,7 @@ export class SiteHandlerManager {
     return this.getCurrentHandler().getVideoContainerSelectors();
   }
 
-  detectSpecialVideos(document: Document): HTMLMediaElement[] {
+  detectSpecialVideos(document: Document | Element): HTMLMediaElement[] {
     return this.getCurrentHandler().detectSpecialVideos(document);
   }
 

@@ -17,7 +17,7 @@ export class AppleHandler extends BaseSiteHandler {
     return ['apple-tv-plus-player', '[data-testid="player"]', '.video-container'];
   }
 
-  detectSpecialVideos(document: Document): HTMLMediaElement[] {
+  detectSpecialVideos(document: Document | Element): HTMLMediaElement[] {
     const applePlayer = document.querySelector('apple-tv-plus-player') as Element & {
       shadowRoot?: ShadowRoot | null;
     };

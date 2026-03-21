@@ -9,6 +9,7 @@ import { VideoMutationObserver } from '../observers/mutation-observer';
 import { MediaElementObserver } from '../observers/media-observer';
 import { videoSpeedConfig } from '../core/settings';
 import { stateManager } from '../core/state-manager';
+import type { VscMedia, VscAttachment } from '../types/settings';
 
 let moduleInitialized = false;
 
@@ -97,7 +98,7 @@ class VideoSpeedExtension {
 
   setAbsoluteSpeed(videos: HTMLMediaElement[], targetSpeed: number): void {
     this.forEachMedia(videos, (video) => {
-      if ((video as any).vsc) {
+      if ((video as VscMedia).vsc) {
         this.actionHandler!.adjustSpeed(video, targetSpeed);
       } else {
         video.playbackRate = targetSpeed;
@@ -109,7 +110,7 @@ class VideoSpeedExtension {
 
   adjustRelativeSpeed(videos: HTMLMediaElement[], delta: number): void {
     this.forEachMedia(videos, (video) => {
-      if ((video as any).vsc) {
+      if ((video as VscMedia).vsc) {
         this.actionHandler!.adjustSpeed(video, delta, { relative: true });
       } else {
         video.playbackRate = Math.min(Math.max(video.playbackRate + delta, 0.07), 16);
@@ -121,7 +122,7 @@ class VideoSpeedExtension {
 
   resetMediaSpeed(videos: HTMLMediaElement[]): void {
     this.forEachMedia(videos, (video) => {
-      if ((video as any).vsc) {
+      if ((video as VscMedia).vsc) {
         this.actionHandler!.resetSpeed(video, 1.0);
       } else {
         video.playbackRate = 1.0;
@@ -131,7 +132,7 @@ class VideoSpeedExtension {
     logger.debug(`Reset speed on ${videos.length} media elements`);
   }
 
-  handleRuntimeMessage(message: any): void {
+  handleRuntimeMessage(message: { type?: string; payload?: { speed?: number; delta?: number } }): void {
     if (!(typeof message === 'object' && message.type && message.type.startsWith('VSC_'))) {
       return;
     }
@@ -154,7 +155,7 @@ class VideoSpeedExtension {
         break;
       case MESSAGE_TYPES.TOGGLE_DISPLAY:
         if (this.actionHandler) {
-          this.actionHandler.runAction('display', null, null);
+          this.actionHandler.runAction('display', 0, null);
         }
         break;
       case MESSAGE_TYPES.GET_SITE_INFO: {
@@ -180,7 +181,7 @@ class VideoSpeedExtension {
   }
 
   hasActiveController(video: HTMLMediaElement): boolean {
-    return Boolean((video as any)?.vsc) || Boolean(stateManager.hasMediaElement(video));
+    return Boolean((video as VscMedia)?.vsc) || Boolean(stateManager.hasMediaElement(video));
   }
 
   isPendingController(video: HTMLMediaElement): boolean {
@@ -203,13 +204,13 @@ class VideoSpeedExtension {
     this.markControllerPending(video);
 
     try {
-      (video as any).vsc = new VideoController(
+      (video as VscMedia).vsc = new VideoController(
         video,
         parent as HTMLElement | null,
         this.config,
-        this.actionHandler,
+        this.actionHandler!,
         shouldStartHidden
-      );
+      ) as unknown as VscAttachment;
     } finally {
       this.clearPendingController(video);
     }
@@ -364,7 +365,7 @@ class VideoSpeedExtension {
         return;
       }
 
-      if ((video as any).vsc) {
+      if ((video as VscMedia).vsc) {
         logger.debug('Video already has controller attached');
         return;
       }
@@ -389,11 +390,11 @@ class VideoSpeedExtension {
     }
   }
 
-  onVideoRemoved(video: HTMLMediaElement & { vsc?: any }): void {
+  onVideoRemoved(video: VscMedia): void {
     try {
       if (video.vsc) {
         logger.debug('Removing controller from video element');
-        video.vsc.remove();
+        video.vsc.remove?.();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

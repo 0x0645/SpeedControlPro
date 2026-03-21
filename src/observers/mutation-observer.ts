@@ -1,19 +1,21 @@
 import { findMediaElements, getShadow } from '../utils/dom-utils';
 import { logger } from '../utils/logger';
+import type { IVideoSpeedConfig, VscMedia } from '../types/settings';
+import type { MediaElementObserver } from './media-observer';
 
 export class VideoMutationObserver {
-  config: any;
+  config: IVideoSpeedConfig;
   onVideoFound: (video: HTMLMediaElement, parent: Node | null) => void;
   onVideoRemoved: (video: HTMLMediaElement) => void;
-  mediaObserver: any;
+  mediaObserver: MediaElementObserver;
   observer: MutationObserver | null;
   shadowObservers: Map<ShadowRoot, MutationObserver>;
 
   constructor(
-    config: any,
+    config: IVideoSpeedConfig,
     onVideoFound: (video: HTMLMediaElement, parent: Node | null) => void,
     onVideoRemoved: (video: HTMLMediaElement) => void,
-    mediaObserver: any
+    mediaObserver: MediaElementObserver
   ) {
     this.config = config;
     this.onVideoFound = onVideoFound;
@@ -71,7 +73,7 @@ export class VideoMutationObserver {
     mediaElements.forEach((media) => {
       if (added) {
         this.onVideoFound(media, media.parentElement || media.parentNode || parent);
-      } else if ((media as any).vsc) {
+      } else if ((media as VscMedia).vsc) {
         this.onVideoRemoved(media);
       }
     });
@@ -129,18 +131,18 @@ export class VideoMutationObserver {
   }
 
   processAttributeMutation(mutation: MutationRecord): void {
-    const target = mutation.target as Element & { attributes: any; nodeName: string };
+    const target = mutation.target as Element;
 
     if (mutation.attributeName === 'style' || mutation.attributeName === 'class') {
       this.handleVisibilityChanges(target);
     }
 
     if (
-      (target.attributes['aria-hidden'] && target.attributes['aria-hidden'].value === 'false') ||
+      (target.getAttribute('aria-hidden') === 'false') ||
       target.nodeName === 'APPLE-TV-PLUS-PLAYER'
     ) {
-      const flattenedNodes = getShadow(document.body) as Array<any>;
-      const videoNodes = flattenedNodes.filter((node) => node.tagName === 'VIDEO');
+      const flattenedNodes = getShadow(document.body) as Element[];
+      const videoNodes = flattenedNodes.filter((node) => node.tagName === 'VIDEO') as VscMedia[];
 
       for (const node of videoNodes) {
         if (node.vsc && target.nodeName === 'APPLE-TV-PLUS-PLAYER') {
@@ -148,7 +150,7 @@ export class VideoMutationObserver {
         }
 
         if (node.vsc) {
-          node.vsc.remove();
+          node.vsc.remove?.();
         }
 
         this.checkForVideoAndShadowRoot(node, node.parentNode || mutation.target, true);
@@ -173,7 +175,7 @@ export class VideoMutationObserver {
     });
   }
 
-  recheckVideoElement(video: HTMLMediaElement & { vsc?: any }): void {
+  recheckVideoElement(video: VscMedia): void {
     if (!this.mediaObserver) {
       return;
     }
@@ -181,10 +183,10 @@ export class VideoMutationObserver {
     if (video.vsc) {
       if (!this.mediaObserver.isValidMediaElement(video)) {
         logger.debug('Video became invalid, removing controller');
-        video.vsc.remove();
-        video.vsc = null;
+        video.vsc.remove?.();
+        video.vsc = undefined;
       } else {
-        video.vsc.updateVisibility();
+        video.vsc.updateVisibility?.();
       }
       return;
     }
@@ -206,7 +208,7 @@ export class VideoMutationObserver {
     ) {
       if (added) {
         this.onVideoFound(node as HTMLMediaElement, parent);
-      } else if ((node as any).vsc) {
+      } else if ((node as VscMedia).vsc) {
         this.onVideoRemoved(node as HTMLMediaElement);
       }
       return;

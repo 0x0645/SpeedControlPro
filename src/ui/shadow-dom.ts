@@ -2,7 +2,7 @@ import { logger } from '../utils/logger';
 import { formatSpeed } from '../utils/constants';
 
 export class ShadowDOMManager {
-  static createShadowDOM(wrapper: HTMLElement, options: any = {}): ShadowRoot {
+  static createShadowDOM(wrapper: HTMLElement, options: { top?: string; left?: string; speed?: string; opacity?: number; buttonSize?: number } = {}): ShadowRoot {
     const { top = '0px', left = '0px', speed = '1.00', opacity = 0.3, buttonSize = 14 } = options;
     const shadow = wrapper.attachShadow({ mode: 'open' });
 

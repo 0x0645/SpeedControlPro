@@ -1,8 +1,12 @@
 declare global {
-  var chrome: any;
+  // Chrome extension APIs
+  var chrome: typeof globalThis.chrome;
 
   interface Window {
-    VSC_settings: any;
+    /** Page-level settings cache used by StorageManager in inject context */
+    VSC_settings: Record<string, unknown> | null;
+    /** The active VideoSpeedExtension instance */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     VSC_controller: any;
   }
 }

@@ -117,7 +117,7 @@ export function setupMessageBridge(): void {
   });
 
   chrome.runtime.onMessage.addListener(
-    (request: any, _sender: unknown, sendResponse: (payload: unknown) => void) => {
+    (request: Record<string, unknown>, _sender: unknown, sendResponse: (payload: unknown) => void) => {
       window.dispatchEvent(
         new CustomEvent('VSC_MESSAGE', {
           detail: request,

@@ -51,7 +51,7 @@ export class BaseSiteHandler {
     return [];
   }
 
-  detectSpecialVideos(_document: Document): HTMLMediaElement[] {
+  detectSpecialVideos(_document: Document | Element): HTMLMediaElement[] {
     return [];
   }
 }

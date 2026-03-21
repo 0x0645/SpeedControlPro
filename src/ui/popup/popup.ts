@@ -27,6 +27,11 @@ type SiteInfoResponse = {
   speed?: number;
 };
 
+type ChromeTab = {
+  id?: number;
+  url?: string;
+};
+
 function byId<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
 }
@@ -244,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadSettingsAndInitialize(): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
       let hostname = '';
       if (tabs[0]?.url) {
         try {
@@ -332,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setSpeed(speed: number): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id!, {
           type: MESSAGE_TYPES.SET_SPEED,
@@ -344,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function adjustSpeed(delta: number): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
       if (tabs[0]) {
         const tabId = tabs[0].id!;
         // Optimistic UI update
@@ -373,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initializeSiteProfile(): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
       if (!tabs[0] || !tabs[0].url) {
         return;
       }
