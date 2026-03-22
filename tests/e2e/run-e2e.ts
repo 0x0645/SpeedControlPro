@@ -2,7 +2,7 @@
 
 /**
  * E2E test runner for Video Speed Controller Chrome Extension
- * Usage: node tests/e2e/run-e2e.js [youtube|basic|all]
+ * Usage: tsx tests/e2e/run-e2e.ts [youtube|basic|settings|display|all]
  */
 
 import { pathToFileURL, fileURLToPath } from 'url';
@@ -12,40 +12,37 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Check if Puppeteer is available
 try {
   await import('puppeteer');
-} catch (error) {
+} catch {
   console.error('❌ Puppeteer not found. Install it with: npm install puppeteer');
   console.error('   Note: Puppeteer will download a Chrome binary (~170MB)');
   process.exit(1);
 }
 
-async function runE2ETests() {
+async function runE2ETests(): Promise<void> {
   console.log('🎭 Video Speed Controller - E2E Test Runner\n');
 
   let totalPassed = 0;
   let totalFailed = 0;
 
-  // Determine which tests to run based on command line argument
   const testType = process.argv[2];
-  let testFiles = [];
+  let testFiles: string[] = [];
 
   if (testType === 'youtube') {
-    testFiles = ['youtube.e2e.js'];
+    testFiles = ['youtube.e2e.ts'];
   } else if (testType === 'basic') {
-    testFiles = ['basic.e2e.js'];
+    testFiles = ['basic.e2e.ts'];
   } else if (testType === 'settings') {
-    testFiles = ['settings-injection.e2e.js'];
+    testFiles = ['settings-injection.e2e.ts'];
   } else if (testType === 'display') {
-    testFiles = ['display-toggle.e2e.js'];
+    testFiles = ['display-toggle.e2e.ts'];
   } else {
-    // Run all tests
     testFiles = [
-      'basic.e2e.js',
-      'youtube.e2e.js',
-      'settings-injection.e2e.js',
-      'display-toggle.e2e.js',
+      'basic.e2e.ts',
+      'youtube.e2e.ts',
+      'settings-injection.e2e.ts',
+      'display-toggle.e2e.ts',
     ];
   }
 
@@ -77,7 +74,7 @@ async function runE2ETests() {
       }
     } catch (error) {
       console.log(`   💥 Error running ${testFile}:`);
-      console.log(`      ${error.message}\n`);
+      console.log(`      ${(error as Error).message}\n`);
       totalFailed++;
     }
   }

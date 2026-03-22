@@ -2,7 +2,6 @@
 
 /**
  * Extension validation script - checks extension files and structure
- * This runs without browser automation to verify extension is ready for E2E testing
  */
 
 import { existsSync, readFileSync } from 'fs';
@@ -13,13 +12,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const extensionRoot = join(__dirname, '../../');
 
-function validateExtension() {
+function validateExtension(): boolean {
   console.log('🔍 Validating Video Speed Controller Extension Structure\n');
 
   let passed = 0;
   let failed = 0;
 
-  const test = (name, condition, details = '') => {
+  const test = (name: string, condition: boolean, details = ''): void => {
     if (condition) {
       console.log(`✅ ${name}`);
       passed++;
@@ -29,31 +28,26 @@ function validateExtension() {
     }
   };
 
-  // Check core files
   test('manifest.json exists', existsSync(join(extensionRoot, 'manifest.json')));
   test('inject.css exists', existsSync(join(extensionRoot, 'src/styles/inject.css')));
   test('shadow.css exists', existsSync(join(extensionRoot, 'src/styles/shadow.css')));
 
-  // Check bundled files
   test('dist/content.js exists', existsSync(join(extensionRoot, 'dist/content.js')));
   test('dist/inject.js exists', existsSync(join(extensionRoot, 'dist/inject.js')));
   test('dist/background.js exists', existsSync(join(extensionRoot, 'dist/background.js')));
   test('dist/popup.js exists', existsSync(join(extensionRoot, 'dist/popup.js')));
   test('dist/options.js exists', existsSync(join(extensionRoot, 'dist/options.js')));
 
-  // Check source structure (still needed for unit tests)
   test('src/content/inject.ts exists', existsSync(join(extensionRoot, 'src/content/inject.ts')));
   test('src/core/ directory exists', existsSync(join(extensionRoot, 'src/core')));
   test('src/utils/ directory exists', existsSync(join(extensionRoot, 'src/utils')));
   test('src/ui/ directory exists', existsSync(join(extensionRoot, 'src/ui')));
 
-  // Check key modules
   test('VideoController exists', existsSync(join(extensionRoot, 'src/core/video-controller.ts')));
   test('Settings module exists', existsSync(join(extensionRoot, 'src/core/settings.ts')));
   test('ActionHandler exists', existsSync(join(extensionRoot, 'src/core/action-handler.ts')));
   test('ShadowDOM manager exists', existsSync(join(extensionRoot, 'src/ui/shadow-dom.ts')));
 
-  // Validate manifest.json structure
   try {
     const manifest = JSON.parse(readFileSync(join(extensionRoot, 'manifest.json'), 'utf8'));
 
@@ -76,43 +70,39 @@ function validateExtension() {
         manifest.content_scripts[0].matches.includes('https://*/*')
     );
   } catch (error) {
-    test('Manifest.json is valid JSON', false, error.message);
+    test('Manifest.json is valid JSON', false, (error as Error).message);
   }
 
-  // Check main inject script
   try {
     const injectScript = readFileSync(join(extensionRoot, 'src/content/inject.ts'), 'utf8');
 
     test('Inject script exports VSC_controller', injectScript.includes('window.VSC_controller'));
     test('Inject script initializes extension', injectScript.includes('initialize'));
   } catch (error) {
-    test('Inject script readable', false, error.message);
+    test('Inject script readable', false, (error as Error).message);
   }
 
-  // Verify no references to deleted files
   try {
     const manifest = JSON.parse(readFileSync(join(extensionRoot, 'manifest.json'), 'utf8'));
     const manifestStr = JSON.stringify(manifest);
     test('No reference to injector.js', !manifestStr.includes('injector.js'));
     test('No reference to module-loader.js', !manifestStr.includes('module-loader.js'));
-  } catch (error) {
-    test('Manifest clean of old files', false, error.message);
+  } catch {
+    test('Manifest clean of old files', false);
   }
 
-  // Check for test files
   test('Unit tests exist', existsSync(join(extensionRoot, 'tests/unit')));
   test('Integration tests exist', existsSync(join(extensionRoot, 'tests/integration')));
   test('E2E tests exist', existsSync(join(extensionRoot, 'tests/e2e')));
 
-  // Check package.json scripts
   try {
     const packageJson = JSON.parse(readFileSync(join(extensionRoot, 'package.json'), 'utf8'));
 
     test('Test scripts defined', packageJson.scripts && packageJson.scripts.test);
     test('E2E test script defined', packageJson.scripts && packageJson.scripts['test:e2e']);
     test('Type is module', packageJson.type === 'module');
-  } catch (error) {
-    test('Package.json is valid', false, error.message);
+  } catch {
+    test('Package.json is valid', false);
   }
 
   console.log('\n📊 Validation Summary');
@@ -136,6 +126,5 @@ function validateExtension() {
   return failed === 0;
 }
 
-// Run validation
 const isValid = validateExtension();
 process.exit(isValid ? 0 : 1);

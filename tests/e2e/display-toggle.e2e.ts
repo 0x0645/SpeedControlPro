@@ -2,27 +2,24 @@
  * E2E test for display toggle functionality
  */
 
-import { launchChromeWithExtension, sleep } from './e2e-utils.js';
+import { launchChromeWithExtension, sleep } from './e2e-utils';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function testDisplayToggle() {
+async function testDisplayToggle(): Promise<{ success: true } | { success: false; error: string }> {
   console.log('🧪 Testing display toggle functionality...');
 
   const { browser, page } = await launchChromeWithExtension();
 
   try {
-    // Load test page with video
     const testPagePath = `file://${path.join(__dirname, 'test-video.html')}`;
     await page.goto(testPagePath, { waitUntil: 'domcontentloaded' });
 
-    // Wait for extension to load
     await sleep(2000);
 
-    // Verify controller is initially visible
     const controllerVisible = await page.evaluate(() => {
       const controllers = document.querySelectorAll('.vsc-controller');
       if (controllers.length === 0) {
@@ -48,13 +45,14 @@ async function testDisplayToggle() {
 
     console.log('✅ Controller is initially visible');
 
-    // Press 'V' to hide controller
     await page.keyboard.press('v');
     await sleep(500);
 
-    // Verify controller is hidden
     const controllerHidden = await page.evaluate(() => {
       const controller = document.querySelector('.vsc-controller');
+      if (!controller) {
+        return { success: false, message: 'No controller' };
+      }
       const computedStyle = window.getComputedStyle(controller);
       const isHidden =
         computedStyle.display === 'none' ||
@@ -73,13 +71,14 @@ async function testDisplayToggle() {
 
     console.log('✅ Controller hidden after pressing V');
 
-    // Press 'V' again to show controller
     await page.keyboard.press('v');
     await sleep(500);
 
-    // Verify controller is visible again
     const controllerVisibleAgain = await page.evaluate(() => {
       const controller = document.querySelector('.vsc-controller');
+      if (!controller) {
+        return { success: false, message: 'No controller' };
+      }
       const computedStyle = window.getComputedStyle(controller);
       const isVisible =
         computedStyle.display !== 'none' &&
@@ -100,17 +99,14 @@ async function testDisplayToggle() {
 
     console.log('✅ Controller visible again after pressing V');
 
-    // Test console logging
     const consoleLogs = await page.evaluate(() => {
-      // Check if display action was logged
-      const logs = [];
+      const logs: string[] = [];
       const originalLog = console.log;
-      console.log = (...args) => {
+      (console as Console & { log: (...args: unknown[]) => void }).log = (...args: unknown[]) => {
         logs.push(args.join(' '));
         originalLog.apply(console, args);
       };
 
-      // Trigger display action
       const event = new KeyboardEvent('keydown', { keyCode: 86 });
       document.dispatchEvent(event);
 
@@ -122,17 +118,14 @@ async function testDisplayToggle() {
     console.log('✅ Display toggle test passed!');
     return { success: true };
   } catch (error) {
-    console.error('❌ Display toggle test failed:', error.message);
-    return { success: false, error: error.message };
+    console.error('❌ Display toggle test failed:', (error as Error).message);
+    return { success: false, error: (error as Error).message };
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    await browser.close();
   }
 }
 
-// Export test runner function
-export async function run() {
+export async function run(): Promise<{ passed: number; failed: number }> {
   const result = await testDisplayToggle();
   return {
     passed: result.success ? 1 : 0,

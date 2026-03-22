@@ -12,7 +12,7 @@
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "pnpm build && node tests/e2e/run-e2e.js",
+    "test:e2e": "pnpm build && tsx tests/e2e/run-e2e.ts",
     "test:browser": "echo 'Open tests/fixtures/test-page.html in browser'",
     "serve": "python3 -m http.server 8000",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
