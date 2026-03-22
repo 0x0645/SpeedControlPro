@@ -4,7 +4,9 @@ import {
   EXTENSION_MESSAGES,
   MESSAGE_TYPES,
 } from '../utils/message-types';
-import type { RuntimeMessage } from '../types/contracts';
+import { getFromChromeStorage, setInChromeStorage } from '../core/chrome-storage-adapter';
+import { sendRuntimeMessage } from '../utils/chrome-api';
+import type { RuntimeMessage, StorageChangeMap, StorageSnapshot } from '../types/contracts';
 
 let bridgeInitialized = false;
 
@@ -27,6 +29,14 @@ function isBridgeStatusRequest(payload: unknown): payload is { action: 'get-stat
     'action' in payload &&
     (payload as { action?: unknown }).action === 'get-status'
   );
+}
+
+function flattenStorageChanges(changes: StorageChangeMap): StorageSnapshot {
+  const changedData: StorageSnapshot = {};
+  for (const [key, value] of Object.entries(changes)) {
+    changedData[key] = value?.newValue;
+  }
+  return changedData;
 }
 
 export function __resetBridgeForTests(): void {
@@ -114,24 +124,25 @@ export function setupMessageBridge(): void {
     const { source, action, data } = event.data;
 
     if (source === BRIDGE_SOURCES.PAGE) {
-      if (action === BRIDGE_ACTIONS.STORAGE_UPDATE) {
-        const update = data as Record<string, unknown>;
-        if (typeof update.lastSpeed === 'number' && Number.isFinite(update.lastSpeed)) {
-          chrome.runtime.sendMessage({
-            type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
-            lastSpeed: update.lastSpeed,
-          });
-        }
-        chrome.storage.sync.set(update);
-      } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE && isRuntimeMessage(data)) {
-        if (data.type !== MESSAGE_TYPES.STATE_UPDATE) {
-          chrome.runtime.sendMessage(data);
-        }
-      } else if (action === BRIDGE_ACTIONS.GET_STORAGE) {
-        chrome.storage.sync.get(null, (items: Record<string, unknown>) => {
+      void (async () => {
+        if (action === BRIDGE_ACTIONS.STORAGE_UPDATE) {
+          const update = data as StorageSnapshot;
+          if (typeof update.lastSpeed === 'number' && Number.isFinite(update.lastSpeed)) {
+            await sendRuntimeMessage({
+              type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
+              lastSpeed: update.lastSpeed,
+            });
+          }
+          await setInChromeStorage(update);
+        } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE && isRuntimeMessage(data)) {
+          if (data.type !== MESSAGE_TYPES.STATE_UPDATE) {
+            await sendRuntimeMessage(data);
+          }
+        } else if (action === BRIDGE_ACTIONS.GET_STORAGE) {
+          const items = await getFromChromeStorage();
           postToPage(BRIDGE_ACTIONS.STORAGE_DATA, items);
-        });
-      }
+        }
+      })();
     }
   });
 
@@ -157,15 +168,9 @@ export function setupMessageBridge(): void {
     }
   );
 
-  chrome.storage.onChanged.addListener(
-    (changes: Record<string, { newValue?: unknown }>, namespace: string) => {
-      if (namespace === 'sync') {
-        const changedData: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(changes)) {
-          changedData[key] = value?.newValue;
-        }
-        postToPage(BRIDGE_ACTIONS.STORAGE_CHANGED, changedData);
-      }
+  chrome.storage.onChanged.addListener((changes: StorageChangeMap, namespace: string) => {
+    if (namespace === 'sync') {
+      postToPage(BRIDGE_ACTIONS.STORAGE_CHANGED, flattenStorageChanges(changes));
     }
-  );
+  });
 }

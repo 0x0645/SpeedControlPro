@@ -1,5 +1,15 @@
 import { EXTENSION_MESSAGES, MESSAGE_TYPES } from '../../utils/message-types';
+import { getFromChromeSessionStorage } from '../../core/chrome-session-adapter';
+import { getFromChromeStorage, setInChromeStorage } from '../../core/chrome-storage-adapter';
+import {
+  openOptionsPage,
+  queryActiveTab,
+  sendRuntimeMessage,
+  sendTabMessage,
+} from '../../utils/chrome-api';
 import { normalizeHostname } from '../../utils/hostname';
+import type { SiteInfoResponse } from '../../types/contracts';
+import type { KeyBinding, SiteProfile } from '../../types/settings';
 
 let preferredSpeed = 1.0;
 let currentSpeed = 1.0;
@@ -10,27 +20,25 @@ let statusTimeout: number | undefined;
 type PopupStorage = {
   enabled?: boolean;
   lastSpeed?: number;
-  keyBindings?: Array<{ action: string; value: number }>;
+  keyBindings?: KeyBinding[];
   siteProfiles?: Record<string, SiteProfile>;
 };
 
-type SiteProfile = {
-  speed?: number;
-  startHidden?: boolean;
-  audioBoolean?: boolean;
-  controllerOpacity?: number;
-  controllerButtonSize?: number;
-  keyBindings?: Array<{ action: string; key: number | null; value: number; force?: boolean }>;
-};
+async function getSyncStorage(defaults: PopupStorage = {}): Promise<PopupStorage> {
+  return getFromChromeStorage(defaults);
+}
 
-type SiteInfoResponse = {
-  speed?: number;
-};
+async function setSyncStorage(data: PopupStorage): Promise<void> {
+  await setInChromeStorage(data);
+}
 
-type ChromeTab = {
-  id?: number;
-  url?: string;
-};
+async function getSessionStorage<T>(defaults: T): Promise<T> {
+  return getFromChromeSessionStorage(defaults as T & Record<string, unknown>) as Promise<T>;
+}
+
+async function sendTabRuntimeMessage<T>(tabId: number, message: object): Promise<T | undefined> {
+  return sendTabMessage<T>(tabId, message);
+}
 
 function byId<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -168,33 +176,35 @@ function setActiveSiteProfile(profile?: SiteProfile): void {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadSettingsAndInitialize();
-  initializeSiteProfile();
+  void loadSettingsAndInitialize();
+  void initializeSiteProfile();
 
   query<HTMLElement>('#config').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+    void openOptionsPage();
   });
 
   query<HTMLElement>('#site-profile-edit').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+    void openOptionsPage();
   });
 
   query<HTMLElement>('#disable').addEventListener('click', function () {
     const isCurrentlyEnabled = !this.classList.contains('disabled');
-    toggleEnabled(!isCurrentlyEnabled, settingsSavedReloadMessage);
+    void toggleEnabled(!isCurrentlyEnabled, settingsSavedReloadMessage);
   });
 
-  chrome.storage.sync.get({ enabled: true }, (storage: PopupStorage) => {
+  void getSyncStorage({ enabled: true }).then((storage) => {
     toggleEnabledUI(storage.enabled !== false);
   });
 
-  function toggleEnabled(enabled: boolean, callback?: (enabled: boolean) => void): void {
-    chrome.storage.sync.set({ enabled }, () => {
-      toggleEnabledUI(enabled);
-      if (callback) {
-        callback(enabled);
-      }
-    });
+  async function toggleEnabled(
+    enabled: boolean,
+    callback?: (enabled: boolean) => void
+  ): Promise<void> {
+    await setSyncStorage({ enabled });
+    toggleEnabledUI(enabled);
+    if (callback) {
+      callback(enabled);
+    }
   }
 
   function toggleEnabledUI(enabled: boolean): void {
@@ -212,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       },
     });
 
-    chrome.runtime.sendMessage({ type: EXTENSION_MESSAGES.TOGGLE, enabled });
+    void sendRuntimeMessage({ type: EXTENSION_MESSAGES.TOGGLE, enabled });
   }
 
   function settingsSavedReloadMessage(enabled: boolean): void {
@@ -238,7 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshSiteProfileUI();
   }
 
-  function getEffectiveKeyBindings(storage: PopupStorage, hostname: string): Array<{ action: string; value: number }> {
+  function getEffectiveKeyBindings(
+    storage: PopupStorage,
+    hostname: string
+  ): Array<{ action: string; value: number }> {
     const profiles = storage.siteProfiles || {};
     const key = normalizeHostname(hostname) || hostname;
     const profile = profiles[key] || profiles[hostname];
@@ -248,72 +261,74 @@ document.addEventListener('DOMContentLoaded', () => {
     return resolved;
   }
 
-  function loadSettingsAndInitialize(): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
-      let hostname = '';
-      if (tabs[0]?.url) {
-        try {
-          const raw = new URL(tabs[0].url).hostname;
-          hostname = normalizeHostname(raw) || raw;
-        } catch {
-          hostname = '';
-        }
+  async function loadSettingsAndInitialize(): Promise<void> {
+    const activeTab = await queryActiveTab();
+    let hostname = '';
+
+    if (activeTab?.url) {
+      try {
+        const raw = new URL(activeTab.url).hostname;
+        hostname = normalizeHostname(raw) || raw;
+      } catch {
+        hostname = '';
       }
+    }
 
-      chrome.storage.sync.get(null, (storage: PopupStorage) => {
-        const keyBindings = getEffectiveKeyBindings(storage, hostname);
+    const storage = await getSyncStorage();
+    const keyBindings = getEffectiveKeyBindings(storage, hostname);
 
-        let slowerStep = 0.1;
-        let fasterStep = 0.1;
+    let slowerStep = 0.1;
+    let fasterStep = 0.1;
 
-        const slowerBinding = keyBindings.find((kb) => kb.action === 'slower');
-        const fasterBinding = keyBindings.find((kb) => kb.action === 'faster');
-        const fastBinding = keyBindings.find((kb) => kb.action === 'fast');
+    const slowerBinding = keyBindings.find((kb) => kb.action === 'slower');
+    const fasterBinding = keyBindings.find((kb) => kb.action === 'faster');
+    const fastBinding = keyBindings.find((kb) => kb.action === 'fast');
 
-        if (slowerBinding && typeof slowerBinding.value === 'number') {
-          slowerStep = slowerBinding.value;
-        }
-        if (fasterBinding && typeof fasterBinding.value === 'number') {
-          fasterStep = fasterBinding.value;
-        }
-        if (fastBinding && typeof fastBinding.value === 'number') {
-          preferredSpeed = fastBinding.value;
-        }
+    if (slowerBinding && typeof slowerBinding.value === 'number') {
+      slowerStep = slowerBinding.value;
+    }
+    if (fasterBinding && typeof fasterBinding.value === 'number') {
+      fasterStep = fasterBinding.value;
+    }
+    if (fastBinding && typeof fastBinding.value === 'number') {
+      preferredSpeed = fastBinding.value;
+    }
 
-        const decreaseBtn = query<HTMLElement>('#speed-decrease');
-        if (decreaseBtn) {
-          decreaseBtn.dataset.delta = String(-slowerStep);
-        }
-        const increaseBtn = query<HTMLElement>('#speed-increase');
-        if (increaseBtn) {
-          increaseBtn.dataset.delta = String(fasterStep);
-        }
+    const decreaseBtn = query<HTMLElement>('#speed-decrease');
+    if (decreaseBtn) {
+      decreaseBtn.dataset.delta = String(-slowerStep);
+    }
+    const increaseBtn = query<HTMLElement>('#speed-increase');
+    if (increaseBtn) {
+      increaseBtn.dataset.delta = String(fasterStep);
+    }
 
-        initializeSpeedControls();
+    initializeSpeedControls();
 
-        // Show speed: session tab speed > GET_SITE_INFO > lastSpeed fallback
-        const tabId = tabs[0]?.id;
-        const fallbackSpeed = storage.lastSpeed ?? 1.0;
+    const tabId = activeTab?.id;
+    const fallbackSpeed = storage.lastSpeed ?? 1.0;
 
-        if (tabId) {
-          // Try session storage first (instant, written by background on every speed change)
-          chrome.storage.session.get({ tabSpeeds: {} }, (session: { tabSpeeds?: Record<string, number> }) => {
-            const sessionSpeed = (session.tabSpeeds || {})[String(tabId)];
-            updateSpeedUI(typeof sessionSpeed === 'number' ? sessionSpeed : fallbackSpeed);
+    if (!tabId) {
+      updateSpeedUI(fallbackSpeed);
+      return;
+    }
 
-            // Then reconcile with the actual playback rate from the page
-            chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.GET_SITE_INFO }, (res: SiteInfoResponse) => {
-              const s = typeof res?.speed === 'number' && Number.isFinite(res.speed) ? res.speed : null;
-              if (s != null) {
-                updateSpeedUI(s);
-              }
-            });
-          });
-        } else {
-          updateSpeedUI(fallbackSpeed);
-        }
-      });
+    const session = await getSessionStorage<{ tabSpeeds?: Record<string, number> }>({
+      tabSpeeds: {},
     });
+    const sessionSpeed = (session.tabSpeeds || {})[String(tabId)];
+    updateSpeedUI(typeof sessionSpeed === 'number' ? sessionSpeed : fallbackSpeed);
+
+    const response = await sendTabRuntimeMessage<SiteInfoResponse>(tabId, {
+      type: MESSAGE_TYPES.GET_SITE_INFO,
+    });
+    const resolvedSpeed =
+      typeof response?.speed === 'number' && Number.isFinite(response.speed)
+        ? response.speed
+        : null;
+    if (resolvedSpeed !== null) {
+      updateSpeedUI(resolvedSpeed);
+    }
   }
 
   function initializeSpeedControls(): void {
@@ -337,96 +352,92 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setSpeed(speed: number): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id!, {
-          type: MESSAGE_TYPES.SET_SPEED,
-          payload: { speed },
-        });
-        updateSpeedUI(speed);
+    void queryActiveTab().then((tab) => {
+      if (!tab?.id) {
+        return;
       }
+
+      void sendTabRuntimeMessage(tab.id, {
+        type: MESSAGE_TYPES.SET_SPEED,
+        payload: { speed },
+      });
+      updateSpeedUI(speed);
     });
   }
 
   function adjustSpeed(delta: number): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
-      if (tabs[0]) {
-        const tabId = tabs[0].id!;
-        // Optimistic UI update
-        const estimated = Math.min(16, Math.max(0.07, Number((currentSpeed + delta).toFixed(2))));
-        updateSpeedUI(estimated);
-
-        chrome.tabs.sendMessage(tabId, {
-          type: MESSAGE_TYPES.ADJUST_SPEED,
-          payload: { delta },
-        });
-
-        // Reconcile with actual playback rate
-        globalThis.setTimeout(() => {
-          chrome.tabs.sendMessage(
-            tabId,
-            { type: MESSAGE_TYPES.GET_SITE_INFO },
-            (response: SiteInfoResponse) => {
-              if (response && typeof response.speed === 'number') {
-                updateSpeedUI(response.speed);
-              }
-            }
-          );
-        }, 100);
+    void queryActiveTab().then((tab) => {
+      if (!tab?.id) {
+        return;
       }
+
+      const tabId = tab.id;
+      const estimated = Math.min(16, Math.max(0.07, Number((currentSpeed + delta).toFixed(2))));
+      updateSpeedUI(estimated);
+
+      void sendTabRuntimeMessage(tabId, {
+        type: MESSAGE_TYPES.ADJUST_SPEED,
+        payload: { delta },
+      });
+
+      globalThis.setTimeout(() => {
+        void sendTabRuntimeMessage<SiteInfoResponse>(tabId, {
+          type: MESSAGE_TYPES.GET_SITE_INFO,
+        }).then((response) => {
+          if (response && typeof response.speed === 'number') {
+            updateSpeedUI(response.speed);
+          }
+        });
+      }, 100);
     });
   }
 
-  function initializeSiteProfile(): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: ChromeTab[]) => {
-      if (!tabs[0] || !tabs[0].url) {
-        return;
-      }
+  async function initializeSiteProfile(): Promise<void> {
+    const activeTab = await queryActiveTab();
+    if (!activeTab?.url) {
+      return;
+    }
 
-      try {
-        const rawHostname = new URL(tabs[0].url).hostname;
-        activeHostname = normalizeHostname(rawHostname) || rawHostname;
-      } catch {
-        return;
-      }
+    try {
+      const rawHostname = new URL(activeTab.url).hostname;
+      activeHostname = normalizeHostname(rawHostname) || rawHostname;
+    } catch {
+      return;
+    }
 
-      byId<HTMLElement>('site-hostname').textContent = activeHostname;
-      chrome.storage.sync.get({ siteProfiles: {} }, (storage: PopupStorage) => {
-        setActiveSiteProfile((storage.siteProfiles || {})[activeHostname]);
+    byId<HTMLElement>('site-hostname').textContent = activeHostname;
+    const storage = await getSyncStorage({ siteProfiles: {} });
+    setActiveSiteProfile((storage.siteProfiles || {})[activeHostname]);
+
+    byId<HTMLButtonElement>('site-speed-toggle').addEventListener('click', () => {
+      void getSyncStorage({ siteProfiles: {} }).then(async (storage) => {
+        const profiles = storage.siteProfiles || {};
+        const nextProfile = {
+          ...(activeSiteProfile || profiles[activeHostname] || {}),
+          speed: Number(currentSpeed.toFixed(2)),
+        };
+
+        profiles[activeHostname] = nextProfile;
+
+        await setSyncStorage({ siteProfiles: profiles });
+        setActiveSiteProfile(nextProfile);
+        setStatusMessage(`Saved ${currentSpeed.toFixed(2)}x for ${activeHostname}.`, 'success');
       });
+    });
 
-      byId<HTMLButtonElement>('site-speed-toggle').addEventListener('click', () => {
-        chrome.storage.sync.get({ siteProfiles: {} }, (storage: PopupStorage) => {
-          const profiles = storage.siteProfiles || {};
-          const nextProfile = {
-            ...(activeSiteProfile || profiles[activeHostname] || {}),
-            speed: Number(currentSpeed.toFixed(2)),
-          };
+    byId<HTMLButtonElement>('site-profile-clear').addEventListener('click', () => {
+      void getSyncStorage({ siteProfiles: {} }).then(async (storage) => {
+        const profiles = storage.siteProfiles || {};
 
-          profiles[activeHostname] = nextProfile;
+        if (profiles[activeHostname] === undefined && activeSiteProfile === undefined) {
+          return;
+        }
 
-          chrome.storage.sync.set({ siteProfiles: profiles }, () => {
-            setActiveSiteProfile(nextProfile);
-            setStatusMessage(`Saved ${currentSpeed.toFixed(2)}x for ${activeHostname}.`, 'success');
-          });
-        });
-      });
+        delete profiles[activeHostname];
 
-      byId<HTMLButtonElement>('site-profile-clear').addEventListener('click', () => {
-        chrome.storage.sync.get({ siteProfiles: {} }, (storage: PopupStorage) => {
-          const profiles = storage.siteProfiles || {};
-
-          if (profiles[activeHostname] === undefined && activeSiteProfile === undefined) {
-            return;
-          }
-
-          delete profiles[activeHostname];
-
-          chrome.storage.sync.set({ siteProfiles: profiles }, () => {
-            setActiveSiteProfile(undefined);
-            setStatusMessage(`This site is back on global defaults.`, 'success');
-          });
-        });
+        await setSyncStorage({ siteProfiles: profiles });
+        setActiveSiteProfile(undefined);
+        setStatusMessage(`This site is back on global defaults.`, 'success');
       });
     });
   }

@@ -81,10 +81,7 @@ export function subscribeToPageStorage(callback: (changes: StorageChangeMap) => 
       event.data?.action === BRIDGE_ACTIONS.STORAGE_CHANGED
     ) {
       const previousSettings = getCachedSettings() || {};
-      const changes = buildStorageChanges(
-        event.data.data,
-        previousSettings as Record<string, unknown>
-      );
+      const changes = buildStorageChanges(event.data.data as StorageSnapshot, previousSettings);
       mergeCachedSettings(event.data.data as StorageSnapshot);
       notifyCallbacks(pageStorageCallbacks, changes);
     }

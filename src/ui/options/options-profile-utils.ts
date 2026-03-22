@@ -1,3 +1,4 @@
+import type { KeyBinding } from '../../types/settings';
 import { ACTION_OPTIONS, keyCodeToLabel } from './options-key-utils';
 
 export function buildProfileKeybindingRow(
@@ -20,6 +21,6 @@ export function buildProfileKeybindingRow(
   </div>`;
 }
 
-export function cloneGlobalBindings<T extends Record<string, unknown>>(bindings: T[]): T[] {
+export function cloneGlobalBindings(bindings: KeyBinding[]): KeyBinding[] {
   return bindings.map((binding) => ({ ...binding, predefined: false }));
 }

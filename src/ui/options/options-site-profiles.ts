@@ -197,9 +197,7 @@ function attachProfileKeybindingHandlers(
       await options.ensureConfig();
 
       const globalKeyBindings = options.config.settings.keyBindings || DEFAULT_SETTINGS.keyBindings;
-      const copiedBindings = cloneGlobalBindings(
-        globalKeyBindings as unknown as Array<Record<string, unknown>>
-      ) as unknown as KeyBinding[];
+      const copiedBindings = cloneGlobalBindings(globalKeyBindings as KeyBinding[]);
       await options.config.setSiteProfile(host, { keyBindings: copiedBindings });
       await renderSiteProfileList(options);
     });

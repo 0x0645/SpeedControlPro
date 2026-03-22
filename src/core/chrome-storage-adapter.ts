@@ -6,6 +6,14 @@ function getChromeStorage() {
   return globalThis.chrome.storage.sync;
 }
 
+function isPromiseLike<T>(value: unknown): value is Promise<T> {
+  return !!value && typeof (value as Promise<T>).then === 'function';
+}
+
+function supportsPromiseApi(method: (...args: unknown[]) => unknown, argCount: number): boolean {
+  return method.length <= argCount;
+}
+
 function reportStorageError(operation: string, runtimeError: Error, context: unknown = {}): Error {
   const error = new Error(`Storage ${operation} failed: ${runtimeError.message}`);
   console.error(`Chrome storage ${operation} failed:`, runtimeError);
@@ -20,8 +28,18 @@ export function hasChromeStorage(): boolean {
 export async function getFromChromeStorage(
   defaults: Partial<ExtensionSettings> = {}
 ): Promise<StorageSnapshot> {
+  const getMethod = getChromeStorage().get;
+  if (supportsPromiseApi(getMethod, 1)) {
+    const promiseResult = getMethod(defaults);
+    if (isPromiseLike<StorageSnapshot>(promiseResult)) {
+      const storage = await promiseResult;
+      logger.debug('Retrieved settings from chrome.storage');
+      return storage;
+    }
+  }
+
   return new Promise((resolve) => {
-    getChromeStorage().get(defaults, (storage: StorageSnapshot) => {
+    getMethod(defaults, (storage: StorageSnapshot) => {
       logger.debug('Retrieved settings from chrome.storage');
       resolve(storage);
     });
@@ -29,8 +47,18 @@ export async function getFromChromeStorage(
 }
 
 export async function setInChromeStorage(data: StorageSnapshot): Promise<void> {
+  const setMethod = getChromeStorage().set;
+  if (supportsPromiseApi(setMethod, 1)) {
+    const promiseResult = setMethod(data);
+    if (isPromiseLike<void>(promiseResult)) {
+      await promiseResult;
+      logger.debug('Settings saved to chrome.storage');
+      return;
+    }
+  }
+
   return new Promise((resolve, reject) => {
-    getChromeStorage().set(data, () => {
+    setMethod(data, () => {
       if (globalThis.chrome.runtime.lastError) {
         reject(reportStorageError('save', globalThis.chrome.runtime.lastError, data));
         return;
@@ -43,8 +71,18 @@ export async function setInChromeStorage(data: StorageSnapshot): Promise<void> {
 }
 
 export async function removeFromChromeStorage(keys: string[]): Promise<void> {
+  const removeMethod = getChromeStorage().remove;
+  if (supportsPromiseApi(removeMethod, 1)) {
+    const promiseResult = removeMethod(keys);
+    if (isPromiseLike<void>(promiseResult)) {
+      await promiseResult;
+      logger.debug('Keys removed from storage');
+      return;
+    }
+  }
+
   return new Promise((resolve, reject) => {
-    getChromeStorage().remove(keys, () => {
+    removeMethod(keys, () => {
       if (globalThis.chrome.runtime.lastError) {
         reject(
           reportStorageError('remove', globalThis.chrome.runtime.lastError, {
@@ -61,8 +99,18 @@ export async function removeFromChromeStorage(keys: string[]): Promise<void> {
 }
 
 export async function clearChromeStorage(): Promise<void> {
+  const clearMethod = getChromeStorage().clear;
+  if (supportsPromiseApi(clearMethod, 0)) {
+    const promiseResult = clearMethod();
+    if (isPromiseLike<void>(promiseResult)) {
+      await promiseResult;
+      logger.debug('Storage cleared');
+      return;
+    }
+  }
+
   return new Promise((resolve, reject) => {
-    getChromeStorage().clear(() => {
+    clearMethod(() => {
       if (globalThis.chrome.runtime.lastError) {
         reject(
           reportStorageError('clear', globalThis.chrome.runtime.lastError, {

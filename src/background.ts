@@ -1,4 +1,70 @@
 import { EXTENSION_MESSAGES } from './utils/message-types';
+import {
+  getFromChromeSessionStorage,
+  setInChromeSessionStorage,
+} from './core/chrome-session-adapter';
+import {
+  getFromChromeStorage,
+  removeFromChromeStorage,
+  setInChromeStorage,
+} from './core/chrome-storage-adapter';
+import type { ExtensionToggleMessage, StorageChangeMap } from './types/contracts';
+import type { SiteProfile } from './types/settings';
+
+type BackgroundMessage =
+  | ExtensionToggleMessage
+  | {
+      type: 'VSC_TAB_SPEED_UPDATE';
+      lastSpeed?: number;
+    };
+
+type SessionSpeedStorage = {
+  tabSpeeds?: Record<string, number>;
+};
+
+type LegacyMigrationStorage = {
+  siteSpeedMap?: unknown;
+  siteProfiles?: Record<string, SiteProfile> | null;
+};
+
+type LegacySiteSpeedMap = Record<string, number | string>;
+
+function hasSiteSpeedMap(value: unknown): value is LegacySiteSpeedMap {
+  return typeof value === 'object' && value !== null;
+}
+
+function migrateSiteSpeedMap(siteSpeedMap: LegacySiteSpeedMap): Record<string, SiteProfile> {
+  const siteProfiles: Record<string, SiteProfile> = {};
+
+  for (const [hostname, speed] of Object.entries(siteSpeedMap)) {
+    siteProfiles[hostname] = { speed: Number(speed) };
+  }
+
+  return siteProfiles;
+}
+
+async function getSessionTabSpeeds(): Promise<Record<string, number>> {
+  const session = await getFromChromeSessionStorage<SessionSpeedStorage>({ tabSpeeds: {} });
+  return session.tabSpeeds || {};
+}
+
+async function setSessionTabSpeeds(tabSpeeds: Record<string, number>): Promise<void> {
+  await setInChromeSessionStorage({ tabSpeeds });
+}
+
+async function updateTabSpeed(tabId: number, speed: number): Promise<void> {
+  const tabSpeeds = await getSessionTabSpeeds();
+  await setSessionTabSpeeds({
+    ...tabSpeeds,
+    [String(tabId)]: speed,
+  });
+}
+
+async function removeTabSpeed(tabId: number): Promise<void> {
+  const tabSpeeds = await getSessionTabSpeeds();
+  delete tabSpeeds[String(tabId)];
+  await setSessionTabSpeeds(tabSpeeds);
+}
 
 export async function updateIcon(enabled: boolean): Promise<void> {
   try {
@@ -18,7 +84,7 @@ export async function updateIcon(enabled: boolean): Promise<void> {
 
 export async function initializeIcon(): Promise<void> {
   try {
-    const storage = await chrome.storage.sync.get({ enabled: true });
+    const storage = await getFromChromeStorage({ enabled: true });
     await updateIcon(storage.enabled !== false);
   } catch (error) {
     console.error('Failed to initialize icon:', error);
@@ -45,21 +111,16 @@ export async function migrateConfig(): Promise<void> {
   ];
 
   try {
-    await chrome.storage.sync.remove(DEPRECATED_KEYS);
+    await removeFromChromeStorage(DEPRECATED_KEYS);
 
-    const storage = await chrome.storage.sync.get({ siteSpeedMap: null, siteProfiles: null });
-    if (storage.siteSpeedMap && !storage.siteProfiles) {
-      const siteProfiles: Record<string, { speed: number }> = {};
-      for (const [hostname, speed] of Object.entries(
-        storage.siteSpeedMap as Record<string, unknown>
-      )) {
-        siteProfiles[hostname] = { speed: Number(speed) };
-      }
-      await chrome.storage.sync.set({ siteProfiles });
-      await chrome.storage.sync.remove(['siteSpeedMap']);
+    const storage = (await getFromChromeStorage()) as LegacyMigrationStorage;
+    if (hasSiteSpeedMap(storage.siteSpeedMap) && !storage.siteProfiles) {
+      const siteProfiles = migrateSiteSpeedMap(storage.siteSpeedMap);
+      await setInChromeStorage({ siteProfiles });
+      await removeFromChromeStorage(['siteSpeedMap']);
       console.log('[VSC] Migrated siteSpeedMap -> siteProfiles');
-    } else if (storage.siteSpeedMap) {
-      await chrome.storage.sync.remove(['siteSpeedMap']);
+    } else if (hasSiteSpeedMap(storage.siteSpeedMap)) {
+      await removeFromChromeStorage(['siteSpeedMap']);
     }
 
     console.log('[VSC] Config migrated to current version');
@@ -68,40 +129,31 @@ export async function migrateConfig(): Promise<void> {
   }
 }
 
-chrome.storage.onChanged.addListener(
-  (changes: Record<string, { newValue?: unknown }>, namespace: string) => {
-    if (namespace === 'sync' && changes.enabled) {
-      void updateIcon(changes.enabled.newValue !== false);
-    }
+chrome.storage.onChanged.addListener((changes: StorageChangeMap, namespace: string) => {
+  if (namespace === 'sync' && changes.enabled) {
+    void updateIcon(changes.enabled.newValue !== false);
   }
-);
+});
 
 chrome.runtime.onMessage.addListener(
-  (message: { type?: string; enabled?: boolean; lastSpeed?: number }, sender: { tab?: { id?: number } }) => {
+  (message: BackgroundMessage, sender: { tab?: { id?: number } }) => {
     if (message.type === EXTENSION_MESSAGES.TOGGLE) {
       void updateIcon(message.enabled !== false);
       return;
     }
-    if (message.type === EXTENSION_MESSAGES.TAB_SPEED_UPDATE && sender.tab?.id != null) {
+
+    if (message.type === EXTENSION_MESSAGES.TAB_SPEED_UPDATE && sender.tab?.id !== undefined) {
       const tabId = sender.tab.id;
       const lastSpeed = message.lastSpeed;
       if (typeof lastSpeed === 'number' && Number.isFinite(lastSpeed)) {
-        chrome.storage.session.get({ tabSpeeds: {} }, (stored: { tabSpeeds?: Record<string, number> }) => {
-          const tabSpeeds = { ...(stored.tabSpeeds || {}), [String(tabId)]: lastSpeed };
-          chrome.storage.session.set({ tabSpeeds });
-        });
+        void updateTabSpeed(tabId, lastSpeed);
       }
-      return;
     }
   }
 );
 
 chrome.tabs.onRemoved.addListener((tabId: number) => {
-  chrome.storage.session.get({ tabSpeeds: {} }, (stored: { tabSpeeds?: Record<string, number> }) => {
-    const tabSpeeds = { ...(stored.tabSpeeds || {}) };
-    delete tabSpeeds[String(tabId)];
-    chrome.storage.session.set({ tabSpeeds });
-  });
+  void removeTabSpeed(tabId);
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -109,7 +161,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   await migrateConfig();
   await initializeIcon();
   // Clean up legacy tabSpeeds from sync storage
-  chrome.storage.sync.remove(['tabSpeeds']);
+  await removeFromChromeStorage(['tabSpeeds']);
 });
 
 chrome.runtime.onStartup.addListener(async () => {

@@ -1,22 +1,25 @@
 import { injectScript, setupMessageBridge } from '../content/injection-bridge';
+import { getFromChromeStorage } from '../core/chrome-storage-adapter';
 import { isBlacklisted } from '../utils/blacklist';
+import type { StorageSnapshot } from '../types/contracts';
 
 async function init(): Promise<void> {
   try {
-    const settings = await chrome.storage.sync.get(null);
+    const settings = await getFromChromeStorage();
 
     if (settings.enabled === false) {
       console.debug('[VSC] Extension disabled');
       return;
     }
 
-    if (isBlacklisted(settings.blacklist, location.href)) {
+    if (isBlacklisted(settings.blacklist || '', location.href)) {
       console.debug('[VSC] Site blacklisted');
       return;
     }
 
-    delete settings.blacklist;
-    delete settings.enabled;
+    const bootstrapSettings: StorageSnapshot = { ...(settings as StorageSnapshot) };
+    delete bootstrapSettings.blacklist;
+    delete bootstrapSettings.enabled;
 
     setupMessageBridge();
 
@@ -28,7 +31,7 @@ async function init(): Promise<void> {
     const settingsElement = document.createElement('script');
     settingsElement.id = 'vsc-settings-data';
     settingsElement.type = 'application/json';
-    settingsElement.textContent = JSON.stringify(settings);
+    settingsElement.textContent = JSON.stringify(bootstrapSettings);
     (document.head || document.documentElement).appendChild(settingsElement);
 
     await injectScript('inject.js');

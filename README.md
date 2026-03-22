@@ -1,16 +1,18 @@
 # The science of accelerated playback
 
 | Chrome Extension                                                       | Downloads                                                                        | GitHub Release                                                 |
-|------------------------------------------------------------------------|----------------------------------------------------------------------------------|----------------------------------------------------------------|
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | [![Chrome Web Store][chrome-web-store-version]][chrome-web-store-link] | [![Chrome Web Store Users][chrome-web-store-users-badge]][chrome-web-store-link] | [![GitHub release][github-release-badge]][github-release-link] |
 
 <!-- Badges -->
+
 [chrome-web-store-version]: https://img.shields.io/chrome-web-store/v/nffaoalbilbmmfgbnbgppjihopabppdk?label=Chrome%20Web%20Store
 [chrome-web-store-users-badge]: https://img.shields.io/chrome-web-store/users/nffaoalbilbmmfgbnbgppjihopabppdk
 [github-release-badge]: https://img.shields.io/github/v/release/igrigorik/videospeed
 
 <!-- Links -->
-[chrome-web-store-link]: https://chrome.google.com/webstore/detail/poe2-trade-butler/nffaoalbilbmmfgbnbgppjihopabppdk
+
+[chrome-web-store-link]: https://chrome.google.com/webstore/detail/video-speed-controller/nffaoalbilbmmfgbnbgppjihopabppdk
 [github-release-link]: https://github.com/igrigorik/videospeed/releases
 
 **TL;DR: faster playback translates to better engagement and retention.**
@@ -66,6 +68,10 @@ preferences. As an example, you can assign multiple "preferred speed" shortcuts 
 and click "Add New".
 After making changes or adding new settings, remember to refresh the video viewing page for them to take effect.
 
+You can also save per-site profiles for the current hostname. A profile can keep
+site-specific speed defaults, audio/controller behavior, and shortcut overrides
+without changing your global defaults.
+
 ![settings Add New shortcut](https://user-images.githubusercontent.com/121805/50726471-50242200-1172-11e9-902f-0e5958387617.jpg)
 
 Unfortunately, some sites may assign other functionality to one of the shortcut keys - this is inevitable. As a workaround, the extension
@@ -95,6 +101,44 @@ to the extension.
 - Find "Video Speed Controller" extension in the list and enable "Allow access
   to file URLs"
 - Open a new tab and try opening a local file; the controls should show up.
+
+## Development
+
+This repo builds a Manifest V3 Chrome extension into `dist/`.
+
+### Setup
+
+- `pnpm install`
+- `pnpm build`
+- Load `dist/` as an unpacked extension from `chrome://extensions`
+
+### Common commands
+
+- `pnpm dev` - watch build
+- `pnpm build` - production build
+- `pnpm lint` - lint source and tests
+- `pnpm typecheck` - TypeScript checks for contracts and app code
+- `pnpm test:unit` - unit tests
+- `pnpm test:integration` - integration tests
+- `pnpm test:e2e` - end-to-end tests
+- `pnpm zip` - build and package the extension
+
+### Project structure
+
+- `src/entries/` - content and inject entry points plus background/popup/options bootstraps
+- `src/core/` - settings, storage, controller, and action logic
+- `src/content/` - content-script bridge and page injection runtime
+- `src/ui/` - popup, options page, controller element, and UI helpers
+- `src/observers/` - media and mutation observers
+- `src/site-handlers/` - site-specific controller placement/behavior
+- `tests/` - custom unit, integration, and e2e test runners
+
+### Architecture notes
+
+- Runtime modules still rely on the global `window.VSC` namespace in page context.
+- Settings flow through shared storage adapters for Chrome sync/session storage.
+- The options page supports both global settings and per-site profiles.
+- The popup reads current playback state from the page and can save site-specific speed presets.
 
 ### License
 

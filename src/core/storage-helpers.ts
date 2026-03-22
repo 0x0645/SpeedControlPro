@@ -1,12 +1,12 @@
-import type { StorageChangeMap } from '../types/contracts';
+import type { StorageChangeMap, StorageSnapshot } from '../types/contracts';
 
 function normalizeKeys(keys: string | string[]): string[] {
   return Array.isArray(keys) ? keys : [keys];
 }
 
 function buildStorageChanges(
-  data: Record<string, unknown>,
-  previousData: Record<string, unknown> = {}
+  data: StorageSnapshot,
+  previousData: StorageSnapshot = {}
 ): StorageChangeMap {
   const changes: StorageChangeMap = {};
 

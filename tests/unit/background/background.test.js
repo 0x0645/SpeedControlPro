@@ -6,8 +6,10 @@ function installBackgroundChromeMock() {
   const calls = {
     setIcon: [],
     setStorage: [],
+    setSessionStorage: [],
     removeStorage: [],
     getStorage: [],
+    getSessionStorage: [],
   };
 
   const listeners = {
@@ -36,6 +38,15 @@ function installBackgroundChromeMock() {
           calls.removeStorage.push(keys);
         },
       },
+      session: {
+        get: async (defaults) => {
+          calls.getSessionStorage.push(defaults);
+          return defaults;
+        },
+        set: async (payload) => {
+          calls.setSessionStorage.push(payload);
+        },
+      },
       onChanged: {
         addListener: (callback) => {
           listeners.onChanged = callback;
@@ -57,6 +68,11 @@ function installBackgroundChromeMock() {
         addListener: (callback) => {
           listeners.onStartup = callback;
         },
+      },
+    },
+    tabs: {
+      onRemoved: {
+        addListener: () => {},
       },
     },
   };

@@ -1,4 +1,10 @@
 import type { VideoSpeedExtension } from '../content/inject';
+import type { StorageSnapshot } from './contracts';
+
+interface VscWindowNamespace {
+  VideoSpeedExtension?: typeof VideoSpeedExtension;
+  [key: string]: unknown;
+}
 
 declare global {
   // Chrome extension APIs
@@ -6,11 +12,9 @@ declare global {
   var chrome: typeof globalThis.chrome;
 
   interface Window {
-    VSC: Record<string, unknown> & {
-      VideoSpeedExtension?: typeof VideoSpeedExtension;
-    };
+    VSC: VscWindowNamespace;
     /** Page-level settings cache used by StorageManager in inject context */
-    VSC_settings: Record<string, unknown> | null;
+    VSC_settings: StorageSnapshot | null;
     validationTimeout?: ReturnType<typeof setTimeout>;
     /** The active VideoSpeedExtension instance */
     VSC_controller: VideoSpeedExtension | null;

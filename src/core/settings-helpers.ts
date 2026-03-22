@@ -39,8 +39,9 @@ function normalizeSiteProfiles(siteProfiles: unknown): Record<string, SiteProfil
   }
 
   const normalizedProfiles: Record<string, SiteProfile> = {};
+  const siteProfileEntries = siteProfiles as Record<string, SiteProfile | unknown>;
 
-  Object.entries(siteProfiles as Record<string, unknown>).forEach(([hostname, profile]) => {
+  Object.entries(siteProfileEntries).forEach(([hostname, profile]) => {
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
       return;
     }
