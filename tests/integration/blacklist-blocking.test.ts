@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../helpers/test-utils.js';
-import { loadCoreModules } from '../helpers/module-loader.js';
-import { isBlacklisted } from '../../src/utils/blacklist.ts';
+import { createMockVideo, createMockDOM } from '../helpers/test-utils';
+import { loadCoreModules } from '../helpers/module-loader';
+import { isBlacklisted } from '../../src/utils/blacklist';
 
 await loadCoreModules();
 

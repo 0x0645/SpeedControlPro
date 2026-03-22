@@ -66,9 +66,7 @@ export class ControlsManager {
         if (event.deltaMode === event.DOM_DELTA_PIXEL) {
           const TOUCHPAD_THRESHOLD = 50;
           if (Math.abs(event.deltaY) < TOUCHPAD_THRESHOLD) {
-            logger.debug(
-              `Touchpad scroll detected (deltaY: ${event.deltaY}) - ignoring`
-            );
+            logger.debug(`Touchpad scroll detected (deltaY: ${event.deltaY}) - ignoring`);
             return;
           }
         }

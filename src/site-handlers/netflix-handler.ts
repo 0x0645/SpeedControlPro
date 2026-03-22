@@ -36,9 +36,7 @@ export class NetflixHandler extends BaseSiteHandler {
 
   initialize(document: Document): void {
     super.initialize(document);
-    logger.debug(
-      'Netflix handler initialized - script injection handled by content script'
-    );
+    logger.debug('Netflix handler initialized - script injection handled by content script');
   }
 
   shouldIgnoreVideo(video: HTMLMediaElement): boolean {

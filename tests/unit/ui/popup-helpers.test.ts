@@ -17,7 +17,7 @@ describe('Popup Helpers', () => {
     };
 
     const { openOptionsPage, queryActiveTab, sendRuntimeMessage, sendTabMessage } =
-      await import('../../../src/utils/chrome-api.ts');
+      await import('../../../src/utils/chrome-api');
 
     const tab = await queryActiveTab();
     const response = await sendTabMessage(12, { type: 'TEST' });
@@ -47,7 +47,7 @@ describe('Popup Helpers', () => {
       },
     };
 
-    const { sendTabMessage } = await import('../../../src/utils/chrome-api.ts');
+    const { sendTabMessage } = await import('../../../src/utils/chrome-api');
     const response = await sendTabMessage(7, { type: 'TEST' });
 
     expect(response).toBe(undefined);

@@ -205,9 +205,7 @@ export class ActionHandler {
     return logger.withContext(video, () => {
       const { relative = false, source = 'internal' } = options;
 
-      logger.debug(
-        `adjustSpeed called: value=${value}, relative=${relative}, source=${source}`
-      );
+      logger.debug(`adjustSpeed called: value=${value}, relative=${relative}, source=${source}`);
       const stack = new Error().stack || '';
       const stackLines = stack.split('\n').slice(1, 8);
       logger.debug(`adjustSpeed call stack: ${stackLines.join(' -> ')}`);
@@ -260,9 +258,7 @@ export class ActionHandler {
 
     const speedIndicator = video.vsc?.speedIndicator;
     if (!speedIndicator) {
-      logger.warn(
-        'Cannot update speed indicator: video controller UI not fully initialized'
-      );
+      logger.warn('Cannot update speed indicator: video controller UI not fully initialized');
       return;
     }
     speedIndicator.textContent = numericSpeed.toFixed(2);

@@ -15,9 +15,9 @@
     "test:e2e": "pnpm build && node tests/e2e/run-e2e.js",
     "test:browser": "echo 'Open tests/fixtures/test-page.html in browser'",
     "serve": "python3 -m http.server 8000",
-    "lint": "eslint 'src/**/*.ts' 'tests/**/*.js'",
-    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.js' --fix",
-    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.js'",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --project tsconfig.json",
     "zip": "pnpm build && node scripts/zip.mjs"
   },

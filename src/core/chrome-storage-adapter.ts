@@ -29,8 +29,7 @@ export async function getFromChromeStorage(
 
   // Pass null to chrome.storage.get when defaults is empty or null,
   // so Chrome returns ALL stored items instead of nothing.
-  const keys =
-    defaults !== null && Object.keys(defaults).length > 0 ? defaults : null;
+  const keys = defaults !== null && Object.keys(defaults).length > 0 ? defaults : null;
 
   return new Promise((resolve, reject) => {
     let settled = false;

@@ -108,7 +108,9 @@ export class VideoController {
       left: '0px',
       speed,
       opacity: this.config.getEffectiveSetting('controllerOpacity', hostname) as number | undefined,
-      buttonSize: this.config.getEffectiveSetting('controllerButtonSize', hostname) as number | undefined,
+      buttonSize: this.config.getEffectiveSetting('controllerButtonSize', hostname) as
+        | number
+        | undefined,
     });
 
     this.controlsManager.setupControlEvents(shadow, this.video);
@@ -123,13 +125,12 @@ export class VideoController {
     const fragment = document.createDocumentFragment();
     fragment.appendChild(wrapper);
 
-    const positioning = siteHandlerManager.getControllerPosition(
-      this.parent!,
-      this.video
-    );
+    const positioning = siteHandlerManager.getControllerPosition(this.parent!, this.video);
 
     const point = positioning.insertionPoint;
-    if (!point) return;
+    if (!point) {
+      return;
+    }
 
     switch (positioning.insertionMethod) {
       case 'beforeParent':

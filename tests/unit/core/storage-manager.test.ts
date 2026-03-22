@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadMinimalModules } from '../../helpers/module-loader.js';
+import { loadMinimalModules } from '../../helpers/module-loader';
 
 await loadMinimalModules();
 
-const { BRIDGE_ACTIONS, BRIDGE_SOURCES } = await import('../../../src/utils/message-types.ts');
-const { StorageManager } = await import('../../../src/core/storage-manager.ts');
+const { BRIDGE_ACTIONS, BRIDGE_SOURCES } = await import('../../../src/utils/message-types');
+const { StorageManager } = await import('../../../src/core/storage-manager');
 
 let originalChrome;
 

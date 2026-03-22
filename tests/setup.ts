@@ -44,36 +44,46 @@ const chromeMock = {
                 {}
               )
             : { ...mockStorage };
-        if (callback) setTimeout(() => callback(result), 0);
+        if (callback) {
+          setTimeout(() => callback(result), 0);
+        }
         return Promise.resolve(result);
       }),
-      set: vi.fn(
-        (items: Record<string, unknown>, callback?: () => void) => {
-          Object.assign(mockStorage, items);
-          if (callback) setTimeout(() => callback(), 0);
-          return Promise.resolve();
+      set: vi.fn((items: Record<string, unknown>, callback?: () => void) => {
+        Object.assign(mockStorage, items);
+        if (callback) {
+          setTimeout(() => callback(), 0);
         }
-      ),
+        return Promise.resolve();
+      }),
       remove: vi.fn((keys: string | string[], callback?: () => void) => {
         const arr = Array.isArray(keys) ? keys : [keys];
         arr.forEach((k) => delete mockStorage[k]);
-        if (callback) setTimeout(() => callback(), 0);
+        if (callback) {
+          setTimeout(() => callback(), 0);
+        }
         return Promise.resolve();
       }),
       clear: vi.fn((callback?: () => void) => {
         Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
-        if (callback) setTimeout(() => callback(), 0);
+        if (callback) {
+          setTimeout(() => callback(), 0);
+        }
         return Promise.resolve();
       }),
     },
     session: {
       get: vi.fn((keys: unknown, callback?: (r: unknown) => void) => {
         const result = typeof keys === 'object' && keys !== null ? { ...keys } : {};
-        if (callback) setTimeout(() => callback(result), 0);
+        if (callback) {
+          setTimeout(() => callback(result), 0);
+        }
         return Promise.resolve(result);
       }),
       set: vi.fn((_data: unknown, callback?: () => void) => {
-        if (callback) setTimeout(() => callback(), 0);
+        if (callback) {
+          setTimeout(() => callback(), 0);
+        }
         return Promise.resolve();
       }),
     },
@@ -91,24 +101,31 @@ const chromeMock = {
       removeListener: vi.fn(),
     },
     sendMessage: vi.fn((_msg: unknown, callback?: () => void) => {
-      if (callback) setTimeout(() => callback(), 0);
+      if (callback) {
+        setTimeout(() => callback(), 0);
+      }
       return Promise.resolve();
     }),
   },
   tabs: {
     query: vi.fn(
-      (_q: unknown, callback?: (tabs: Array<{ id: number; active: boolean; url: string }>) => void) => {
+      (
+        _q: unknown,
+        callback?: (tabs: Array<{ id: number; active: boolean; url: string }>) => void
+      ) => {
         const tabs = [{ id: 1, active: true, url: 'https://www.youtube.com/watch?v=test' }];
-        if (callback) callback(tabs);
+        if (callback) {
+          callback(tabs);
+        }
         return Promise.resolve(tabs);
       }
     ),
-    sendMessage: vi.fn(
-      (_tabId: number, _msg: unknown, callback?: (response: unknown) => void) => {
-        if (callback) setTimeout(() => callback({}), 0);
-        return Promise.resolve({});
+    sendMessage: vi.fn((_tabId: number, _msg: unknown, callback?: (response: unknown) => void) => {
+      if (callback) {
+        setTimeout(() => callback({}), 0);
       }
-    ),
+      return Promise.resolve({});
+    }),
   },
   action: {
     setIcon: vi.fn(async () => {}),
@@ -178,7 +195,9 @@ beforeEach(() => {
               {}
             )
           : { ...mockStorage };
-      if (callback) setTimeout(() => callback(result), 0);
+      if (callback) {
+        setTimeout(() => callback(result), 0);
+      }
       return Promise.resolve(result);
     }
   );
@@ -186,21 +205,29 @@ beforeEach(() => {
   chromeMock.storage.sync.set.mockImplementation(
     (items: Record<string, unknown>, callback?: () => void) => {
       Object.assign(mockStorage, items);
-      if (callback) setTimeout(() => callback(), 0);
+      if (callback) {
+        setTimeout(() => callback(), 0);
+      }
       return Promise.resolve();
     }
   );
 
-  chromeMock.storage.sync.remove.mockImplementation((keys: string | string[], callback?: () => void) => {
-    const arr = Array.isArray(keys) ? keys : [keys];
-    arr.forEach((k) => delete mockStorage[k]);
-    if (callback) setTimeout(() => callback(), 0);
-    return Promise.resolve();
-  });
+  chromeMock.storage.sync.remove.mockImplementation(
+    (keys: string | string[], callback?: () => void) => {
+      const arr = Array.isArray(keys) ? keys : [keys];
+      arr.forEach((k) => delete mockStorage[k]);
+      if (callback) {
+        setTimeout(() => callback(), 0);
+      }
+      return Promise.resolve();
+    }
+  );
 
   chromeMock.storage.sync.clear.mockImplementation((callback?: () => void) => {
     Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
-    if (callback) setTimeout(() => callback(), 0);
+    if (callback) {
+      setTimeout(() => callback(), 0);
+    }
     return Promise.resolve();
   });
 
@@ -209,19 +236,28 @@ beforeEach(() => {
     (path: string) => `chrome-extension://test-extension/${path}`
   );
   chromeMock.runtime.sendMessage.mockImplementation((_msg: unknown, callback?: () => void) => {
-    if (callback) setTimeout(() => callback(), 0);
+    if (callback) {
+      setTimeout(() => callback(), 0);
+    }
     return Promise.resolve();
   });
   chromeMock.tabs.query.mockImplementation(
-    (_q: unknown, callback?: (tabs: Array<{ id: number; active: boolean; url: string }>) => void) => {
+    (
+      _q: unknown,
+      callback?: (tabs: Array<{ id: number; active: boolean; url: string }>) => void
+    ) => {
       const tabs = [{ id: 1, active: true, url: 'https://www.youtube.com/watch?v=test' }];
-      if (callback) callback(tabs);
+      if (callback) {
+        callback(tabs);
+      }
       return Promise.resolve(tabs);
     }
   );
   chromeMock.tabs.sendMessage.mockImplementation(
     (_tabId: number, _msg: unknown, callback?: (response: unknown) => void) => {
-      if (callback) setTimeout(() => callback({}), 0);
+      if (callback) {
+        setTimeout(() => callback({}), 0);
+      }
       return Promise.resolve({});
     }
   );
@@ -229,12 +265,16 @@ beforeEach(() => {
   chromeMock.storage.session.get.mockImplementation(
     (keys: unknown, callback?: (r: unknown) => void) => {
       const result = typeof keys === 'object' && keys !== null ? { ...keys } : {};
-      if (callback) setTimeout(() => callback(result), 0);
+      if (callback) {
+        setTimeout(() => callback(result), 0);
+      }
       return Promise.resolve(result);
     }
   );
   chromeMock.storage.session.set.mockImplementation((_data: unknown, callback?: () => void) => {
-    if (callback) setTimeout(() => callback(), 0);
+    if (callback) {
+      setTimeout(() => callback(), 0);
+    }
     return Promise.resolve();
   });
 });

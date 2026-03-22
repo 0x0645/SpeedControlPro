@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, wait } from '../helpers/test-utils.js';
-import { loadCoreModules } from '../helpers/module-loader.js';
+import { createMockVideo, wait } from '../helpers/test-utils';
+import { loadCoreModules } from '../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -17,7 +17,7 @@ function setupPostMessageMock() {
   const messages = [];
   const originalPostMessage = window.postMessage;
 
-  window.postMessage = function (message, origin) {
+  window.postMessage = function (message, _origin) {
     if (message && message.source === 'vsc-page' && message.action === 'runtime-message') {
       messages.push(message.data);
     }
@@ -33,11 +33,9 @@ function setupPostMessageMock() {
 }
 
 describe('State Manager Integration', () => {
-  beforeEach(() => {
-  });
+  beforeEach(() => {});
 
-  afterEach(() => {
-  });
+  afterEach(() => {});
 
   it('StateManager registers and tracks controllers correctly', async () => {
     // Setup
@@ -178,7 +176,7 @@ describe('State Manager Integration', () => {
     parent.appendChild(mockVideo);
 
     // Create controller
-    const controller = new window.VSC.VideoController(mockVideo, parent, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, parent, config, actionHandler);
 
     // Verify controller is tracked
     expect(window.VSC.stateManager.controllers.size).toBe(1);

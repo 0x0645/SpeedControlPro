@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isBlacklisted } from '../../../src/utils/blacklist.ts';
+import { isBlacklisted } from '../../../src/utils/blacklist';
 
 describe('Blacklist Regex', () => {
   it('should parse regex patterns WITHOUT flags', () => {
@@ -74,7 +74,7 @@ describe('Blacklist Regex', () => {
     let threwError = false;
     try {
       result = isBlacklisted(blacklist, 'https://valid.com/');
-    } catch (e) {
+    } catch {
       threwError = true;
     }
 

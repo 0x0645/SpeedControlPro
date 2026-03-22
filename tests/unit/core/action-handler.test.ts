@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -30,12 +30,7 @@ function createTestVideoWithController(config, actionHandler, videoOptions = {})
   const initialPlaybackRate = mockVideo.playbackRate;
 
   // Create a proper VideoController for this video
-  const controller = new window.VSC.VideoController(
-    mockVideo,
-    mockVideo.parentElement,
-    config,
-    actionHandler
-  );
+  new window.VSC.VideoController(mockVideo, mockVideo.parentElement, config, actionHandler);
 
   // Restore initial playback rate for test consistency
   mockVideo.playbackRate = initialPlaybackRate;

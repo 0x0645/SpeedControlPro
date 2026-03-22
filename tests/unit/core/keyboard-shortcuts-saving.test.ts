@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadMinimalModules } from '../../helpers/module-loader.js';
-import { resetMockStorage } from '../../setup.ts';
+import { loadMinimalModules } from '../../helpers/module-loader';
+import { resetMockStorage } from '../../setup';
 
 // Load all required modules
 await loadMinimalModules();
@@ -47,7 +47,7 @@ describe('Keyboard Shortcuts Saving', () => {
   it('DEFAULT_SETTINGS keyBindings should have proper structure', () => {
     const defaults = window.VSC.Constants.DEFAULT_SETTINGS;
 
-    defaults.keyBindings.forEach((binding, index) => {
+    defaults.keyBindings.forEach((binding, _index) => {
       expect(typeof binding.action).toBe('string');
       expect(typeof binding.key).toBe('number');
       expect(typeof binding.value).toBe('number');
@@ -151,7 +151,7 @@ describe('Keyboard Shortcuts Saving', () => {
 
     // Should have proper boolean types in all bindings
     const bindings = config.settings.keyBindings;
-    bindings.forEach((binding, index) => {
+    bindings.forEach((binding, _index) => {
       expect(typeof binding.force).toBe('boolean');
     });
   });

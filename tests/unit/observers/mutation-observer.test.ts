@@ -1,6 +1,6 @@
 // Import necessary modules
 import { describe, it, expect } from 'vitest';
-import { loadObserverModules } from '../../helpers/module-loader.js';
+import { loadObserverModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadObserverModules();

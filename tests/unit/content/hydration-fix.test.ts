@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockDOM } from '../../helpers/test-utils.js';
-import { loadInjectModules } from '../../helpers/module-loader.js';
+import { createMockDOM } from '../../helpers/test-utils';
+import { loadInjectModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadInjectModules();

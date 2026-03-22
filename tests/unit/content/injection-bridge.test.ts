@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { wait } from '../../helpers/test-utils.js';
+import { wait } from '../../helpers/test-utils';
 import { JSDOM } from 'jsdom';
 
 const { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } =
-  await import('../../../src/utils/message-types.ts');
+  await import('../../../src/utils/message-types');
 
 const { setupMessageBridge, __resetBridgeForTests } =
-  await import('../../../src/content/injection-bridge.ts');
+  await import('../../../src/content/injection-bridge');
 
 const originalGlobals = {
   window: global.window,

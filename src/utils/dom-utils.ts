@@ -53,10 +53,7 @@ export function findVideoParent(element: HTMLElement): HTMLElement {
   return parentElement;
 }
 
-export function initializeWhenReady(
-  document: Document,
-  callback: (doc: Document) => void
-): void {
+export function initializeWhenReady(document: Document, callback: (doc: Document) => void): void {
   logger.debug('Begin initializeWhenReady');
 
   const handleWindowLoad = () => {
@@ -103,10 +100,7 @@ export function findMediaElements(
 
   if ('shadowRoot' in node && (node as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot) {
     mediaElements.push(
-      ...findShadowMedia(
-        (node as Element & { shadowRoot: ShadowRoot }).shadowRoot,
-        selector
-      )
+      ...findShadowMedia((node as Element & { shadowRoot: ShadowRoot }).shadowRoot, selector)
     );
   }
 

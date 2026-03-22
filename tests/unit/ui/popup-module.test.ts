@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'fs/promises';
 import { JSDOM } from 'jsdom';
-import { wait } from '../../helpers/test-utils.js';
+import { wait } from '../../helpers/test-utils';
 
 function installPopupChromeMock() {
   const calls = {
@@ -117,7 +117,7 @@ describe('Popup Module', () => {
     document.documentElement.innerHTML = html;
     const { calls } = installPopupChromeMock();
 
-    await import('../../../src/ui/popup/popup.ts');
+    await import('../../../src/ui/popup/popup');
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
     await wait(20);

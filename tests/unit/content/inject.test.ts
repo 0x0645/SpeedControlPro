@@ -4,12 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  createMockVideo,
-  createMockDOM,
-} from '../../helpers/test-utils.js';
-import { loadInjectModules } from '../../helpers/module-loader.js';
-import { MESSAGE_TYPES, BRIDGE_SOURCES, BRIDGE_ACTIONS } from '../../../src/utils/message-types.ts';
+import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import { loadInjectModules } from '../../helpers/module-loader';
+import { MESSAGE_TYPES } from '../../../src/utils/message-types';
 
 // Load all required modules
 await loadInjectModules();
@@ -166,7 +163,7 @@ describe('VideoSpeedExtension', () => {
       // Verify that the controller was initialized with video.parentElement (not the passed parent)
       // VideoController constructor uses target.parentElement || parent
       expect(video.vsc.parent).toBe(parentElement);
-    } catch (error) {
+    } catch {
       expect(false).toBe(true);
     }
   });
@@ -208,7 +205,7 @@ describe('VideoSpeedExtension', () => {
       // Verify basic functionality
       expect(video.vsc).toBeDefined();
       expect(video.vsc.parent).toBe(fallbackParent);
-    } catch (error) {
+    } catch {
       expect(false).toBe(true);
     }
   });

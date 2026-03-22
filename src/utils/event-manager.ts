@@ -82,14 +82,15 @@ export class EventManager {
       return false;
     }
 
-    const mediaElements = stateManager
-      ? stateManager.getControlledElements()
-      : [];
+    const mediaElements = stateManager ? stateManager.getControlledElements() : [];
     if (!mediaElements.length) {
       return false;
     }
 
-    const effectiveKeyBindings = this.config.getEffectiveSetting('keyBindings', location.hostname) as KeyBinding[] | null;
+    const effectiveKeyBindings = this.config.getEffectiveSetting(
+      'keyBindings',
+      location.hostname
+    ) as KeyBinding[] | null;
     const keyBinding = effectiveKeyBindings?.find((item: KeyBinding) => item.key === keyCode);
 
     if (keyBinding) {
@@ -190,9 +191,7 @@ export class EventManager {
     }
 
     if (video.readyState < 1) {
-      logger.debug(
-        'Ignoring external ratechange during video initialization (readyState < 1)'
-      );
+      logger.debug('Ignoring external ratechange during video initialization (readyState < 1)');
       event.stopImmediatePropagation();
       return;
     }
@@ -200,9 +199,7 @@ export class EventManager {
     const rawExternalRate = typeof video.playbackRate === 'number' ? video.playbackRate : NaN;
     const min = SPEED_LIMITS.MIN;
     if (!isNaN(rawExternalRate) && rawExternalRate <= min) {
-      logger.debug(
-        `Ignoring external ratechange below MIN: raw=${rawExternalRate}, MIN=${min}`
-      );
+      logger.debug(`Ignoring external ratechange below MIN: raw=${rawExternalRate}, MIN=${min}`);
       event.stopImmediatePropagation();
       return;
     }

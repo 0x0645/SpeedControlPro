@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isBlacklisted } from '../../../src/utils/blacklist.ts';
+import { isBlacklisted } from '../../../src/utils/blacklist';
 
 describe('Content Entry', () => {
   it('settings passed to page context should not contain blacklist', () => {

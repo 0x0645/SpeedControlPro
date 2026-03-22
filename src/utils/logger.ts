@@ -45,7 +45,9 @@ export class Logger {
     if (typeof context === 'string') {
       this.contextStack.push(context);
     } else if (context && (context.tagName === 'VIDEO' || context.tagName === 'AUDIO')) {
-      this.contextStack.push(this.formatVideoId(context as HTMLMediaElement & { vsc?: { controllerId?: string } }));
+      this.contextStack.push(
+        this.formatVideoId(context as HTMLMediaElement & { vsc?: { controllerId?: string } })
+      );
     }
   }
 

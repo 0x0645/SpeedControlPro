@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -138,7 +138,7 @@ describe('RecursiveShadowDOM', () => {
 
     expect(results.length).toBe(3);
 
-    const videoIds = results.map(v => v.id).sort();
+    const videoIds = results.map((v) => v.id).sort();
     expect(videoIds).toEqual(['regular-video', 'video-1', 'video-2']);
   });
 
@@ -266,7 +266,7 @@ describe('RecursiveShadowDOM', () => {
     const results = window.VSC.DomUtils.findShadowMedia(container, 'video');
 
     expect(results.length).toBe(2);
-    const ids = results.map(v => v.id).sort();
+    const ids = results.map((v) => v.id).sort();
     expect(ids).toEqual(['regular', 'shadow']);
   });
 
@@ -295,7 +295,7 @@ describe('RecursiveShadowDOM', () => {
     const results = window.VSC.DomUtils.findShadowMedia(host, 'video');
 
     expect(results.length).toBe(3);
-    const ids = results.map(v => v.id).sort();
+    const ids = results.map((v) => v.id).sort();
     expect(ids).toEqual(['level-1', 'level-2a', 'level-2b']);
   });
 

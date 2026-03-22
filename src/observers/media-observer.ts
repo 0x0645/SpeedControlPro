@@ -148,7 +148,10 @@ export class MediaElementObserver {
         return true;
       }
 
-      if ((media as HTMLMediaElement & { disabled?: boolean }).disabled || media.style.pointerEvents === 'none') {
+      if (
+        (media as HTMLMediaElement & { disabled?: boolean }).disabled ||
+        media.style.pointerEvents === 'none'
+      ) {
         logger.debug('Audio controller hidden - element disabled or no pointer events');
         return true;
       }

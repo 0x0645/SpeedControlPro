@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockDOM } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { createMockDOM } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules (need core modules for videoSpeedConfig, ActionHandler, etc.)
 await loadCoreModules();

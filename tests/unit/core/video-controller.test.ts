@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -88,7 +88,7 @@ describe('VideoController', () => {
     const mockVideo = createMockVideo();
     mockDOM.container.appendChild(mockVideo);
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     expect(mockVideo.playbackRate).toBe(2.0);
   });
@@ -227,7 +227,7 @@ describe('VideoController', () => {
       return originalAdjustSpeed.call(this, video, value, options);
     };
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     // Should have called adjustSpeed with the stored speed
     expect(adjustSpeedCalled).toBe(true);
@@ -250,7 +250,7 @@ describe('VideoController', () => {
     });
     mockDOM.container.appendChild(mockVideo);
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     // Should remain at default speed when no stored speed exists
     expect(mockVideo.playbackRate).toBe(1.0);
@@ -268,7 +268,7 @@ describe('VideoController', () => {
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockDOM.container.appendChild(mockVideo);
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     // Should use global lastSpeed
     expect(mockVideo.playbackRate).toBe(2.25);
@@ -292,11 +292,9 @@ describe('VideoController', () => {
       return originalAddEventListener.call(this, type, listener, options);
     };
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
-    // Should have added media event listeners
-    const listenerTypes = addedListeners.map((l) => l.type);
-    expect(addedListeners.length > 0).toBe(true); // Should have added some listeners
+    expect(addedListeners.length > 0).toBe(true);
 
     // Should have proper vsc structure with speedIndicator
     expect(mockVideo.vsc).toBeDefined();
@@ -328,7 +326,7 @@ describe('VideoController', () => {
       return originalAdjustSpeed.call(this, video, value, options);
     };
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    new window.VSC.VideoController(mockVideo, null, config, actionHandler);
 
     // Should have called adjustSpeed during initialization
     expect(adjustSpeedCalls.length > 0).toBe(true);

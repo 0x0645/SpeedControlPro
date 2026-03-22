@@ -81,7 +81,7 @@ function installBackgroundChromeMock() {
 describe('Background', () => {
   it('background helpers migrate config and update icons', async () => {
     const { calls } = installBackgroundChromeMock();
-    const background = await import('../../../src/background.ts');
+    const background = await import('../../../src/background');
 
     await background.updateIcon(false);
     await background.initializeIcon();

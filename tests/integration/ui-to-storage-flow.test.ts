@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../helpers/test-utils.js';
-import { loadCoreModules } from '../helpers/module-loader.js';
+import { createMockVideo, createMockDOM } from '../helpers/test-utils';
+import { loadCoreModules } from '../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -162,48 +162,45 @@ describe('UI to Storage Flow', () => {
     expect(savedData[0].lastSpeed).toBe(1.6); // Correct relative result saved
   });
 
-  it(
-    'Full flow: multiple videos → different speeds → correct storage behavior',
-    async () => {
-      const config = window.VSC.videoSpeedConfig;
-      await config.load();
-      config.settings.rememberSpeed = false; // Non-persistent mode
+  it('Full flow: multiple videos → different speeds → correct storage behavior', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
+    config.settings.rememberSpeed = false; // Non-persistent mode
 
-      const eventManager = new window.VSC.EventManager(config, null);
-      const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager(config, null);
+    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
 
-      // Create multiple videos
-      const video1 = createMockVideo({ currentSrc: 'https://site1.com/video1.mp4' });
-      const video2 = createMockVideo({ currentSrc: 'https://site2.com/video2.mp4' });
+    // Create multiple videos
+    const video1 = createMockVideo({ currentSrc: 'https://site1.com/video1.mp4' });
+    const video2 = createMockVideo({ currentSrc: 'https://site2.com/video2.mp4' });
 
-      mockDOM.container.appendChild(video1);
-      mockDOM.container.appendChild(video2);
+    mockDOM.container.appendChild(video1);
+    mockDOM.container.appendChild(video2);
 
-      const controller1 = new window.VSC.VideoController(video1, null, config, actionHandler);
-      const controller2 = new window.VSC.VideoController(video2, null, config, actionHandler);
+    const controller1 = new window.VSC.VideoController(video1, null, config, actionHandler);
+    const controller2 = new window.VSC.VideoController(video2, null, config, actionHandler);
 
-      // Track storage saves
-      const savedData = [];
-      const originalSave = config.save;
-      config.save = async function (data) {
-        savedData.push({ ...data });
-        return originalSave.call(this, data);
-      };
+    // Track storage saves
+    const savedData = [];
+    const originalSave = config.save;
+    config.save = async function (data) {
+      savedData.push({ ...data });
+      return originalSave.call(this, data);
+    };
 
-      // Change speeds on different videos
-      actionHandler.adjustSpeed(video1, 1.25);
-      actionHandler.adjustSpeed(video2, 1.75);
+    // Change speeds on different videos
+    actionHandler.adjustSpeed(video1, 1.25);
+    actionHandler.adjustSpeed(video2, 1.75);
 
-      // Verify each video has correct state
-      expect(video1.playbackRate).toBe(1.25);
-      expect(video2.playbackRate).toBe(1.75);
-      expect(controller1.speedIndicator.textContent).toBe('1.25');
-      expect(controller2.speedIndicator.textContent).toBe('1.75');
+    // Verify each video has correct state
+    expect(video1.playbackRate).toBe(1.25);
+    expect(video2.playbackRate).toBe(1.75);
+    expect(controller1.speedIndicator.textContent).toBe('1.25');
+    expect(controller2.speedIndicator.textContent).toBe('1.75');
 
-      // With non-persistent mode, no storage saves should occur
-      expect(savedData.length).toBe(0); // No saves with rememberSpeed = false
-    }
-  );
+    // With non-persistent mode, no storage saves should occur
+    expect(savedData.length).toBe(0); // No saves with rememberSpeed = false
+  });
 
   it('Full flow: speed limits enforcement → clamping → correct storage', async () => {
     const config = window.VSC.videoSpeedConfig;

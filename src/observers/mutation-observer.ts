@@ -138,7 +138,7 @@ export class VideoMutationObserver {
     }
 
     if (
-      (target.getAttribute('aria-hidden') === 'false') ||
+      target.getAttribute('aria-hidden') === 'false' ||
       target.nodeName === 'APPLE-TV-PLUS-PLAYER'
     ) {
       const flattenedNodes = getShadow(document.body) as Element[];

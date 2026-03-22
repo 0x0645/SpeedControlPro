@@ -32,12 +32,7 @@ function calculateTargetSpeed(video: HTMLMediaElement, value: number, relative?:
 }
 
 function clampSpeed(targetSpeed: number): number {
-  return Number(
-    Math.min(
-      Math.max(targetSpeed, SPEED_LIMITS.MIN),
-      SPEED_LIMITS.MAX
-    ).toFixed(2)
-  );
+  return Number(Math.min(Math.max(targetSpeed, SPEED_LIMITS.MIN), SPEED_LIMITS.MAX).toFixed(2));
 }
 
 function resolveForcedSpeed(

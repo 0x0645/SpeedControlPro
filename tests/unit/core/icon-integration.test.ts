@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();

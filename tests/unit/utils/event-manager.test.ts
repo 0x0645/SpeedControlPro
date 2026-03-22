@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createMockVideo } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { createMockVideo } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -56,7 +56,7 @@ describe('EventManager', () => {
       detail: { origin: 'external' }, // Not our own event
       stopImmediatePropagation: () => {
         eventStopped = true;
-      }
+      },
     };
 
     // Activate cooldown first
@@ -80,7 +80,7 @@ describe('EventManager', () => {
 
     // Wait for cooldown to expire (COOLDOWN_MS + buffer)
     const waitMs = (window.VSC.EventManager?.COOLDOWN_MS || 50) + 50;
-    await new Promise(resolve => setTimeout(resolve, waitMs));
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
 
     // Cooldown should be expired
     expect(eventManager.coolDown).toBe(false);
@@ -99,7 +99,7 @@ describe('EventManager', () => {
     expect(firstTimeout !== false).toBe(true);
 
     // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Second cooldown activation should replace the first
     eventManager.refreshCoolDown();

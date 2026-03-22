@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadCoreModules } from '../../helpers/module-loader.js';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load required modules (need core modules for ActionHandler, EventManager, stateManager)
 await loadCoreModules();
@@ -89,12 +89,6 @@ describe('F-Keys', () => {
     const BLACKLISTED_KEYCODES = [9, 16, 17, 18, 91, 92, 93, 224];
 
     BLACKLISTED_KEYCODES.forEach((keyCode) => {
-      const mockEvent = {
-        keyCode: keyCode,
-        preventDefault: () => {},
-        stopPropagation: () => {},
-      };
-
       // In the real options.js, blacklisted keys would be prevented
       const isBlacklisted = BLACKLISTED_KEYCODES.includes(keyCode);
       expect(isBlacklisted).toBe(true);
@@ -135,9 +129,9 @@ describe('F-Keys', () => {
       currentTime: 0,
       duration: 100,
       classList: {
-        contains: (className) => false, // Mock classList for 'vsc-cancelled' check
+        contains: (_className) => false, // Mock classList for 'vsc-cancelled' check
       },
-      dispatchEvent: (event) => {
+      dispatchEvent: (_event) => {
         /* Mock dispatchEvent for synthetic events */
       },
       // Add DOM-related properties for controller creation
@@ -188,9 +182,7 @@ describe('F-Keys', () => {
     // F13-F24 should have aliases
     for (let i = 13; i <= 24; i++) {
       const keyCode = 111 + i; // F13=124, etc.
-      const expectedAlias = `F${i}`;
 
-      // This test would fail with the old code but passes with our updates
       const hasAlias = keyCodeAliases[keyCode] !== undefined || keyCode === 124 + (i - 13);
       expect(hasAlias).toBe(true);
     }

@@ -68,7 +68,9 @@ function volumeDown(video: HTMLMediaElement, value: number): void {
 
 function setMark(video: VscMedia): void {
   logger.debug('Adding marker');
-  if (video.vsc) video.vsc.mark = video.currentTime;
+  if (video.vsc) {
+    video.vsc.mark = video.currentTime;
+  }
 }
 
 function jumpToMark(video: VscMedia): void {

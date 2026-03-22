@@ -3,10 +3,9 @@
  * Using global variables to match browser extension architecture
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { wait } from '../../helpers/test-utils.js';
-import { loadCoreModules } from '../../helpers/module-loader.js';
-import { resetMockStorage } from '../../setup.ts';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { wait } from '../../helpers/test-utils';
+import { loadCoreModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadCoreModules();
@@ -67,8 +66,6 @@ describe('Settings', () => {
   });
 
   it('VideoSpeedConfig should have state manager available', () => {
-    const config = window.VSC.videoSpeedConfig;
-
     // Verify state manager is available (media tracking moved there)
     expect(window.VSC.stateManager).toBeDefined();
     expect(typeof window.VSC.stateManager.getAllMediaElements).toBe('function');

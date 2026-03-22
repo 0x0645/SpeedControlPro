@@ -24,7 +24,7 @@ describe('Options Module', () => {
       <div id="status"></div>
     `;
 
-    const mod = await import('../../../src/ui/options/options.ts');
+    const mod = await import('../../../src/ui/options/options');
 
     expect(!!mod).toBe(true);
   });
