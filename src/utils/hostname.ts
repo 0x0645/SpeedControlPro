@@ -19,7 +19,7 @@ export function normalizeHostname(input: string): string | null {
   }
 
   // Basic format check: only valid hostname characters (allows single-label like "localhost")
-  if (!/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*$/.test(hostname)) {
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(hostname)) {
     return null;
   }
 

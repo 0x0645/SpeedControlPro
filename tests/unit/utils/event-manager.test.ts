@@ -12,21 +12,21 @@ await loadCoreModules();
 
 describe('EventManager', () => {
   it('should initialize with cooldown disabled', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     expect(eventManager.coolDown).toBe(false);
   });
 
   it('refreshCoolDown should activate cooldown period', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     // Cooldown should start as false
     expect(eventManager.coolDown).toBe(false);
@@ -39,40 +39,45 @@ describe('EventManager', () => {
   });
 
   it('handleRateChange should block events during cooldown', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = { speedIndicator: { textContent: '1.00' } };
 
     // Create mock event that looks like our synthetic ratechange event
     let eventStopped = false;
-    const mockEvent = {
-      composedPath: () => [mockVideo],
-      target: mockVideo,
-      detail: { origin: 'external' }, // Not our own event
-      stopImmediatePropagation: () => {
-        eventStopped = true;
-      },
+    const mockEvent = new CustomEvent('ratechange', {
+      bubbles: true,
+      detail: { origin: 'external' },
+    });
+    Object.defineProperty(mockEvent, 'composedPath', {
+      value: () => [mockVideo],
+      configurable: true,
+    });
+    Object.defineProperty(mockEvent, 'target', { value: mockVideo, configurable: true });
+    const origStop = mockEvent.stopImmediatePropagation.bind(mockEvent);
+    mockEvent.stopImmediatePropagation = () => {
+      eventStopped = true;
+      origStop();
     };
 
     // Activate cooldown first
     eventManager.refreshCoolDown();
 
-    // Event should be blocked by cooldown
-    eventManager.handleRateChange(mockEvent);
+    eventManager.handleRateChange(mockEvent as unknown as Event);
     expect(eventStopped).toBe(true);
   });
 
   it('cooldown should expire after timeout', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     // Activate cooldown
     eventManager.refreshCoolDown();
@@ -87,11 +92,11 @@ describe('EventManager', () => {
   });
 
   it('multiple refreshCoolDown calls should reset timer', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     // First cooldown activation
     eventManager.refreshCoolDown();
@@ -111,11 +116,11 @@ describe('EventManager', () => {
   });
 
   it('cleanup should clear cooldown', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
 
     // Activate cooldown
     eventManager.refreshCoolDown();

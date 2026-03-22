@@ -1,5 +1,19 @@
 import { logger } from './logger';
 import { LOG_LEVELS } from './constants';
+import type { VscMedia } from '../types/settings';
+
+type VscDebugWindow = Window & {
+  vscDebug?: {
+    checkMedia: () => void;
+    checkControllers: () => void;
+    testPopup: () => void;
+    testBridge: () => void;
+    forceShow: () => number;
+    forceShowAudio: () => number;
+    getVisibility: (element: Element) => ReturnType<DebugHelper['getElementVisibility']>;
+  };
+  vscDebugHelper?: DebugHelper;
+};
 
 export class DebugHelper {
   isActive = false;
@@ -10,7 +24,7 @@ export class DebugHelper {
 
     logger.setVerbosity(LOG_LEVELS.DEBUG);
 
-    (window as any).vscDebug = {
+    (window as VscDebugWindow).vscDebug = {
       checkMedia: () => this.checkMediaElements(),
       checkControllers: () => this.checkControllers(),
       testPopup: () => this.testPopupCommunication(),
@@ -27,7 +41,7 @@ export class DebugHelper {
     const audios = document.querySelectorAll('audio');
     console.log(`Found ${videos.length} video elements, ${audios.length} audio elements`);
 
-    [...videos, ...audios].forEach((media: any, index) => {
+    [...videos, ...audios].forEach((media: HTMLMediaElement, index) => {
       console.group(`${media.tagName} #${index + 1}`);
       console.log('Element:', media);
       console.log('Connected to DOM:', media.isConnected);
@@ -90,7 +104,7 @@ export class DebugHelper {
     console.group('Controllers Analysis');
     const controllers = document.querySelectorAll('vsc-controller');
     console.log(`Found ${controllers.length} VSC controllers`);
-    controllers.forEach((controller: any, index) => {
+    controllers.forEach((controller: Element, index) => {
       console.group(`Controller #${index + 1}`);
       console.log('Element:', controller);
       console.log('Classes:', controller.className);
@@ -123,11 +137,12 @@ export class DebugHelper {
     const actionHandler = controller?.actionHandler;
     if (actionHandler) {
       const testSpeed = 1.5;
-      videos.forEach((video: any) => {
-        if (video.vsc) {
-          actionHandler.adjustSpeed(video, testSpeed);
+      videos.forEach((video: Element) => {
+        const media = video as HTMLMediaElement;
+        if (media.vsc) {
+          actionHandler.adjustSpeed(media, testSpeed);
         } else {
-          video.playbackRate = testSpeed;
+          media.playbackRate = testSpeed;
         }
       });
     }
@@ -150,7 +165,7 @@ export class DebugHelper {
 
   forceShowControllers(): number {
     const controllers = document.querySelectorAll('vsc-controller');
-    controllers.forEach((controller: any) => {
+    controllers.forEach((controller: Element) => {
       controller.classList.remove('vsc-hidden', 'vsc-nosource');
       controller.classList.add('vsc-manual', 'vsc-show');
     });
@@ -160,7 +175,7 @@ export class DebugHelper {
   forceShowAudioControllers(): number {
     const audioElements = document.querySelectorAll('audio');
     let controllersShown = 0;
-    audioElements.forEach((audio: any) => {
+    audioElements.forEach((audio: VscMedia) => {
       if (audio.vsc && audio.vsc.div) {
         const controller = audio.vsc.div;
         controller.classList.remove('vsc-hidden', 'vsc-nosource');
@@ -175,14 +190,14 @@ export class DebugHelper {
     const style = window.getComputedStyle(element);
     const rect = element.getBoundingClientRect();
     return {
-      connected: (element as any).isConnected,
+      connected: element.isConnected,
       display: style.display,
       visibility: style.visibility,
       opacity: style.opacity,
       width: rect.width,
       height: rect.height,
       isVisible:
-        (element as any).isConnected &&
+        element.isConnected &&
         style.display !== 'none' &&
         style.visibility !== 'hidden' &&
         style.opacity !== '0' &&
@@ -217,4 +232,4 @@ export class DebugHelper {
 }
 
 export const debugHelper = new DebugHelper();
-(window as any).vscDebugHelper = debugHelper;
+(window as VscDebugWindow).vscDebugHelper = debugHelper;

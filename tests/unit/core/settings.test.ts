@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { wait } from '../../helpers/test-utils';
 import { loadCoreModules } from '../../helpers/module-loader';
+import type { StorageSnapshot } from '../../../src/types/contracts';
 
 // Load all required modules
 await loadCoreModules();
@@ -51,8 +52,8 @@ describe('Settings', () => {
   });
 
   it('VideoSpeedConfig should handle key bindings', async () => {
-    // Create fresh config instance
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
 
     // Load settings with defaults
     await config.load();
@@ -66,11 +67,10 @@ describe('Settings', () => {
   });
 
   it('VideoSpeedConfig should have state manager available', () => {
-    // Verify state manager is available (media tracking moved there)
     expect(window.VSC.stateManager).toBeDefined();
-    expect(typeof window.VSC.stateManager.getAllMediaElements).toBe('function');
-    expect(typeof window.VSC.stateManager.registerController).toBe('function');
-    expect(typeof window.VSC.stateManager.removeController).toBe('function');
+    expect(typeof window.VSC.stateManager!.getAllMediaElements).toBe('function');
+    expect(typeof window.VSC.stateManager!.registerController).toBe('function');
+    expect(typeof window.VSC.stateManager!.removeController).toBe('function');
   });
 
   it('VideoSpeedConfig should handle invalid key binding requests gracefully', () => {
@@ -84,13 +84,15 @@ describe('Settings', () => {
   });
 
   it('VideoSpeedConfig should debounce lastSpeed saves', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const { StorageManager } = await import('../../../src/core/storage-manager');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     let saveCount = 0;
-    const originalSet = window.VSC.StorageManager.set;
+    const originalSet = StorageManager.set.bind(StorageManager);
 
-    window.VSC.StorageManager.set = async () => {
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = async () => {
       saveCount++;
     };
 
@@ -106,39 +108,41 @@ describe('Settings', () => {
     // Wait for debounce delay
     await wait(1100);
 
-    // Should have saved only once
     expect(saveCount).toBe(1);
 
-    window.VSC.StorageManager.set = originalSet;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = originalSet;
   });
 
   it('VideoSpeedConfig should save non-speed settings immediately', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const { StorageManager } = await import('../../../src/core/storage-manager');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     let saveCount = 0;
-    const originalSet = window.VSC.StorageManager.set;
+    const originalSet = StorageManager.set.bind(StorageManager);
 
-    window.VSC.StorageManager.set = async () => {
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = async () => {
       saveCount++;
     };
 
     await config.save({ enabled: false });
 
-    // Should save immediately
     expect(saveCount).toBe(1);
 
-    window.VSC.StorageManager.set = originalSet;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = originalSet;
   });
 
   it('VideoSpeedConfig should reset debounce timer on new speed updates', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const { StorageManager } = await import('../../../src/core/storage-manager');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     let saveCount = 0;
-    const originalSet = window.VSC.StorageManager.set;
+    const originalSet = StorageManager.set.bind(StorageManager);
 
-    window.VSC.StorageManager.set = async () => {
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = async () => {
       saveCount++;
     };
 
@@ -155,21 +159,25 @@ describe('Settings', () => {
 
     // Wait remaining 600ms (total 1100ms from second update)
     await wait(600);
-    expect(saveCount).toBe(1); // Should have saved now
-    expect(config.settings.lastSpeed).toBe(2.0); // Final value
+    expect(saveCount).toBe(1);
+    expect(config.settings.lastSpeed).toBe(2.0);
 
-    window.VSC.StorageManager.set = originalSet;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = originalSet;
   });
 
   it('VideoSpeedConfig should persist only final speed value', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const { StorageManager } = await import('../../../src/core/storage-manager');
+    const config = new VideoSpeedConfig();
     await config.load();
 
-    let savedValue = null;
-    const originalSet = window.VSC.StorageManager.set;
+    let savedValue: number | null = null;
+    const originalSet = StorageManager.set.bind(StorageManager);
 
-    window.VSC.StorageManager.set = async (settings) => {
-      savedValue = settings.lastSpeed;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = async (
+      settings: { lastSpeed?: number }
+    ) => {
+      savedValue = settings.lastSpeed ?? null;
     };
 
     // Multiple rapid speed updates
@@ -180,20 +188,21 @@ describe('Settings', () => {
     // Wait for debounce
     await wait(1100);
 
-    // Should have saved only the final value
     expect(savedValue).toBe(2.3);
 
-    window.VSC.StorageManager.set = originalSet;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = originalSet;
   });
 
   it('VideoSpeedConfig should update in-memory settings immediately during debounce', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const { StorageManager } = await import('../../../src/core/storage-manager');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     let saveCount = 0;
-    const originalSet = window.VSC.StorageManager.set;
+    const originalSet = StorageManager.set.bind(StorageManager);
 
-    window.VSC.StorageManager.set = async () => {
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = async () => {
       saveCount++;
     };
 
@@ -206,8 +215,8 @@ describe('Settings', () => {
 
     // Wait for debounce
     await wait(1100);
-    expect(saveCount).toBe(1); // Now saved to storage
+    expect(saveCount).toBe(1);
 
-    window.VSC.StorageManager.set = originalSet;
+    (StorageManager as typeof StorageManager & { set: (data: StorageSnapshot) => Promise<void> }).set = originalSet;
   });
 });

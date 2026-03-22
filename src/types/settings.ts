@@ -39,6 +39,7 @@ export interface ExtensionSettings {
 /** The `vsc` property attached to media elements by VideoController */
 export interface VscAttachment {
   div?: HTMLElement;
+  parent?: HTMLElement | null;
   speedIndicator?: { textContent: string };
   controllerId?: string;
   speedBeforeReset?: number | null;
@@ -84,7 +85,7 @@ export interface IActionHandler {
 /** Minimal interface for the event manager */
 export interface IEventManager {
   actionHandler: IActionHandler | null;
-  timer?: number | null;
+  timer?: ReturnType<typeof setTimeout> | null;
   setupEventListeners(document: Document): void;
   showController(controller: HTMLElement): void;
   refreshCoolDown(): void;

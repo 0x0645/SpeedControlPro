@@ -14,14 +14,14 @@ await loadCoreModules();
  * Mock postMessage to capture state manager communications
  */
 function setupPostMessageMock() {
-  const messages = [];
+  const messages: Record<string, unknown>[] = [];
   const originalPostMessage = window.postMessage;
 
-  window.postMessage = function (message, _origin) {
-    if (message && message.source === 'vsc-page' && message.action === 'runtime-message') {
-      messages.push(message.data);
+  window.postMessage = function (message: unknown, _targetOriginOrOptions?: string | unknown) {
+    const msg = message as { source?: string; action?: string; data?: unknown };
+    if (msg?.source === 'vsc-page' && msg?.action === 'runtime-message' && msg.data) {
+      messages.push(msg.data as Record<string, unknown>);
     }
-    // Don't call original to avoid errors in test environment
   };
 
   return {
@@ -44,16 +44,16 @@ describe('State Manager Integration', () => {
     await config.load();
 
     // Clear any existing state
-    window.VSC.stateManager.__resetForTests();
+    window.VSC.stateManager!.__resetForTests();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
-    const mockVideo1 = createMockVideo();
-    mockVideo1.src = 'https://example.com/video1.mp4';
-    mockVideo1.currentSrc = mockVideo1.src;
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const mockVideo1 = createMockVideo({
+      currentSrc: 'https://example.com/video1.mp4',
+    });
 
-    const mockVideo2 = createMockVideo();
-    mockVideo2.src = 'https://example.com/video2.mp4';
-    mockVideo2.currentSrc = mockVideo2.src;
+    const mockVideo2 = createMockVideo({
+      currentSrc: 'https://example.com/video2.mp4',
+    });
 
     // Create parent elements for DOM operations
     const parent1 = document.createElement('div');
@@ -64,12 +64,17 @@ describe('State Manager Integration', () => {
     parent2.appendChild(mockVideo2);
 
     // Test: Creating first controller should trigger state update
-    const controller1 = new window.VSC.VideoController(mockVideo1, parent1, config, actionHandler);
+    const controller1 = new window.VSC.VideoController!(
+      mockVideo1,
+      parent1,
+      config,
+      actionHandler
+    );
     await wait(40);
 
     // Verify controller is registered
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
-    expect(window.VSC.stateManager.hasMediaElement(mockVideo1)).toBe(true);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.hasMediaElement(mockVideo1)).toBe(true);
 
     // Verify background notification was sent
     expect(mockMessage.messages.length > 0).toBe(true);
@@ -79,19 +84,24 @@ describe('State Manager Integration', () => {
     expect(firstMessage.controllerCount).toBe(1);
 
     // Test: Creating second controller
-    const controller2 = new window.VSC.VideoController(mockVideo2, parent2, config, actionHandler);
+    const controller2 = new window.VSC.VideoController!(
+      mockVideo2,
+      parent2,
+      config,
+      actionHandler
+    );
     await wait(40);
 
     // Verify both controllers are tracked
-    expect(window.VSC.stateManager.controllers.size).toBe(2);
+    expect(window.VSC.stateManager!.controllers.size).toBe(2);
 
     // Test: Removing first controller
     controller1.remove();
     await wait(40);
 
     // Verify controller was removed from state manager
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
-    expect(window.VSC.stateManager.hasMediaElement(mockVideo1)).toBe(false);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.hasMediaElement(mockVideo1)).toBe(false);
 
     // Verify background was notified of change
     const removeMessage = mockMessage.messages[mockMessage.messages.length - 1];
@@ -102,7 +112,7 @@ describe('State Manager Integration', () => {
     await wait(40);
 
     // Verify all controllers removed
-    expect(window.VSC.stateManager.controllers.size).toBe(0);
+    expect(window.VSC.stateManager!.controllers.size).toBe(0);
 
     // Verify final notification
     const finalMessage = mockMessage.messages[mockMessage.messages.length - 1];
@@ -121,9 +131,9 @@ describe('State Manager Integration', () => {
     await config.load();
 
     // Clear any existing state
-    window.VSC.stateManager.__resetForTests();
+    window.VSC.stateManager!.__resetForTests();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
     const mockVideo1 = createMockVideo();
     const mockVideo2 = createMockVideo();
 
@@ -136,19 +146,29 @@ describe('State Manager Integration', () => {
     parent2.appendChild(mockVideo2);
 
     // Create controllers
-    const controller1 = new window.VSC.VideoController(mockVideo1, parent1, config, actionHandler);
-    const controller2 = new window.VSC.VideoController(mockVideo2, parent2, config, actionHandler);
+    const controller1 = new window.VSC.VideoController!(
+      mockVideo1,
+      parent1,
+      config,
+      actionHandler
+    );
+    const controller2 = new window.VSC.VideoController!(
+      mockVideo2,
+      parent2,
+      config,
+      actionHandler
+    );
 
     // Test: getAllMediaElements returns all tracked videos
-    const allMedia = window.VSC.stateManager.getAllMediaElements();
+    const allMedia = window.VSC.stateManager!.getAllMediaElements();
     expect(allMedia.length).toBe(2);
     expect(allMedia.includes(mockVideo1)).toBe(true);
     expect(allMedia.includes(mockVideo2)).toBe(true);
-    expect(window.VSC.stateManager.hasMediaElement(mockVideo1)).toBe(true);
-    expect(window.VSC.stateManager.hasMediaElement(mockVideo2)).toBe(true);
+    expect(window.VSC.stateManager!.hasMediaElement(mockVideo1)).toBe(true);
+    expect(window.VSC.stateManager!.hasMediaElement(mockVideo2)).toBe(true);
 
     // Test: getControlledElements returns only videos with controllers
-    const controlledMedia = window.VSC.stateManager.getControlledElements();
+    const controlledMedia = window.VSC.stateManager!.getControlledElements();
     expect(controlledMedia.length).toBe(2);
     expect(controlledMedia.every((v) => v.vsc)).toBe(true);
 
@@ -165,9 +185,9 @@ describe('State Manager Integration', () => {
     await config.load();
 
     // Clear any existing state
-    window.VSC.stateManager.__resetForTests();
+    window.VSC.stateManager!.__resetForTests();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
     const mockVideo = createMockVideo();
 
     // Create parent element for DOM operations
@@ -176,21 +196,21 @@ describe('State Manager Integration', () => {
     parent.appendChild(mockVideo);
 
     // Create controller
-    new window.VSC.VideoController(mockVideo, parent, config, actionHandler);
+    new window.VSC.VideoController!(mockVideo, parent, config, actionHandler);
 
     // Verify controller is tracked
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
 
     // Test: Remove video from DOM without calling controller.remove()
     parent.removeChild(mockVideo);
 
     // Call getAllMediaElements which should trigger cleanup
-    const allMedia = window.VSC.stateManager.getAllMediaElements();
+    const allMedia = window.VSC.stateManager!.getAllMediaElements();
 
     // Verify stale reference was cleaned up
     expect(allMedia.length).toBe(0);
-    expect(window.VSC.stateManager.controllers.size).toBe(0);
-    expect(window.VSC.stateManager.hasMediaElement(mockVideo)).toBe(false);
+    expect(window.VSC.stateManager!.controllers.size).toBe(0);
+    expect(window.VSC.stateManager!.hasMediaElement(mockVideo)).toBe(false);
 
     // No explicit cleanup needed since video is already removed from DOM
   });
@@ -202,19 +222,19 @@ describe('State Manager Integration', () => {
     await config.load();
 
     // Clear any existing state
-    window.VSC.stateManager.__resetForTests();
+    window.VSC.stateManager!.__resetForTests();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
 
     // Create multiple controllers rapidly
-    const videos = [];
+    const videos: HTMLVideoElement[] = [];
     for (let i = 0; i < 5; i++) {
       const video = createMockVideo();
       const parent = document.createElement('div');
       document.body.appendChild(parent);
       parent.appendChild(video);
       videos.push(video);
-      new window.VSC.VideoController(video, parent, config, actionHandler);
+      new window.VSC.VideoController!(video, parent, config, actionHandler);
     }
 
     await wait(40);
@@ -229,8 +249,8 @@ describe('State Manager Integration', () => {
 
     // Cleanup
     videos.forEach((video) => {
-      video.vsc?.remove();
-      video.parentNode?.remove();
+      video.vsc?.remove?.();
+      video.parentElement?.remove();
     });
     mockMessage.restore();
   });

@@ -2,15 +2,20 @@ import { describe, it, expect } from 'vitest';
 
 function installBackgroundChromeMock() {
   const calls = {
-    setIcon: [],
-    setStorage: [],
-    setSessionStorage: [],
-    removeStorage: [],
-    getStorage: [],
-    getSessionStorage: [],
+    setIcon: [] as unknown[],
+    setStorage: [] as Record<string, unknown>[],
+    setSessionStorage: [] as Record<string, unknown>[],
+    removeStorage: [] as string[][],
+    getStorage: [] as Record<string, unknown>[],
+    getSessionStorage: [] as Record<string, unknown>[],
   };
 
-  const listeners = {
+  const listeners: {
+    onChanged: ((payload: unknown) => void) | null;
+    onMessage: ((payload: unknown) => void) | null;
+    onInstalled: (() => void) | null;
+    onStartup: (() => void) | null;
+  } = {
     onChanged: null,
     onMessage: null,
     onInstalled: null,
@@ -19,51 +24,51 @@ function installBackgroundChromeMock() {
 
   global.chrome = {
     action: {
-      setIcon: async (payload) => {
+      setIcon: async (payload: unknown) => {
         calls.setIcon.push(payload);
       },
     },
     storage: {
       sync: {
-        get: async (defaults) => {
+        get: async (defaults: Record<string, unknown>) => {
           calls.getStorage.push(defaults);
           return { enabled: true, siteSpeedMap: { 'example.com': '1.5' }, siteProfiles: null };
         },
-        set: async (payload) => {
+        set: async (payload: Record<string, unknown>) => {
           calls.setStorage.push(payload);
         },
-        remove: async (keys) => {
+        remove: async (keys: string[]) => {
           calls.removeStorage.push(keys);
         },
       },
       session: {
-        get: async (defaults) => {
+        get: async (defaults: Record<string, unknown>) => {
           calls.getSessionStorage.push(defaults);
           return defaults;
         },
-        set: async (payload) => {
+        set: async (payload: Record<string, unknown>) => {
           calls.setSessionStorage.push(payload);
         },
       },
       onChanged: {
-        addListener: (callback) => {
+        addListener: (callback: (payload: unknown) => void) => {
           listeners.onChanged = callback;
         },
       },
     },
     runtime: {
       onMessage: {
-        addListener: (callback) => {
+        addListener: (callback: (payload: unknown) => void) => {
           listeners.onMessage = callback;
         },
       },
       onInstalled: {
-        addListener: (callback) => {
+        addListener: (callback: () => void) => {
           listeners.onInstalled = callback;
         },
       },
       onStartup: {
-        addListener: (callback) => {
+        addListener: (callback: () => void) => {
           listeners.onStartup = callback;
         },
       },
@@ -73,7 +78,7 @@ function installBackgroundChromeMock() {
         addListener: () => {},
       },
     },
-  };
+  } as typeof chrome;
 
   return { calls, listeners };
 }

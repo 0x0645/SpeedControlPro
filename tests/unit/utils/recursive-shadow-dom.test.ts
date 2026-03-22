@@ -4,13 +4,16 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import {
+  createMockVideo,
+  createMockDOM,
+  type MockDOM,
+} from '../../helpers/test-utils';
 import { loadCoreModules } from '../../helpers/module-loader';
 
-// Load all required modules
 await loadCoreModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
 /**
  * Helper function to create nested shadow DOM structure
@@ -18,7 +21,7 @@ let mockDOM;
  * @param {boolean} includeVideo - Whether to include video in the deepest level
  * @returns {Object} {host, deepestShadow, video}
  */
-function createNestedShadowDOM(depth, includeVideo = true) {
+function createNestedShadowDOM(depth: number, includeVideo = true) {
   const host = document.createElement('div');
   host.className = 'shadow-host-root';
 
@@ -82,7 +85,7 @@ describe('RecursiveShadowDOM', () => {
 
   afterEach(() => {
     if (mockDOM) {
-      mockDOM.cleanup();
+      mockDOM!.cleanup();
     }
 
     // Clean up any remaining elements in document.body
@@ -97,7 +100,7 @@ describe('RecursiveShadowDOM', () => {
     const video = createMockVideo();
     shadow.appendChild(video);
 
-    const results = window.VSC.DomUtils.findShadowMedia(shadow, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(shadow, 'video');
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe(video);
@@ -107,11 +110,11 @@ describe('RecursiveShadowDOM', () => {
     const { host, video } = createNestedShadowDOM(3);
 
     // Search from the host element instead of the whole document
-    const results = window.VSC.DomUtils.findShadowMedia(host, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(host, 'video');
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe(video);
-    expect(results[0].className).toBe('nested-shadow-video');
+    expect(results[0]!.className).toBe('nested-shadow-video');
   });
 
   it('DomUtils.findShadowMedia should find multiple videos across different shadow roots', () => {
@@ -120,13 +123,11 @@ describe('RecursiveShadowDOM', () => {
 
     // Create first nested structure
     const { host: host1, video: video1 } = createNestedShadowDOM(2);
-    video1.id = 'video-1';
+    video1!.id = 'video-1';
 
-    // Create second nested structure
     const { host: host2, video: video2 } = createNestedShadowDOM(3);
-    video2.id = 'video-2';
+    video2!.id = 'video-2';
 
-    // Create a regular video for comparison
     const regularVideo = createMockVideo();
     regularVideo.id = 'regular-video';
 
@@ -134,18 +135,18 @@ describe('RecursiveShadowDOM', () => {
     container.appendChild(host2);
     container.appendChild(regularVideo);
 
-    const results = window.VSC.DomUtils.findShadowMedia(container, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(container, 'video');
 
     expect(results.length).toBe(3);
 
-    const videoIds = results.map((v) => v.id).sort();
+    const videoIds = results.map((v: Element) => v.id).sort();
     expect(videoIds).toEqual(['regular-video', 'video-1', 'video-2']);
   });
 
   it('DomUtils.findShadowMedia should handle deeply nested shadow roots (5 levels)', () => {
     const { host, video } = createNestedShadowDOM(5);
 
-    const results = window.VSC.DomUtils.findShadowMedia(host, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(host, 'video');
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe(video);
@@ -162,8 +163,8 @@ describe('RecursiveShadowDOM', () => {
     shadow.appendChild(video);
     shadow.appendChild(audio);
 
-    const videoResults = window.VSC.DomUtils.findShadowMedia(shadow, 'video');
-    const audioVideoResults = window.VSC.DomUtils.findShadowMedia(shadow, 'video,audio');
+    const videoResults = window.VSC.DomUtils!.findShadowMedia(shadow, 'video');
+    const audioVideoResults = window.VSC.DomUtils!.findShadowMedia(shadow, 'video,audio');
 
     expect(videoResults.length).toBe(1);
     expect(audioVideoResults.length).toBe(2);
@@ -180,11 +181,14 @@ describe('RecursiveShadowDOM', () => {
   });
 
   it('MediaElementObserver should find media in nested shadow roots', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
 
     // Create an isolated document for this test
     const testContainer = document.createElement('div');
@@ -201,18 +205,21 @@ describe('RecursiveShadowDOM', () => {
   it('Should handle complex nested player structure', () => {
     const { player, video } = createComplexPlayerStructure();
 
-    const results = window.VSC.DomUtils.findShadowMedia(player, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(player, 'video');
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe(video);
   });
 
   it('Should handle complex player structure with MediaElementObserver', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
 
     const testContainer = document.createElement('div');
     const { player, video } = createComplexPlayerStructure();
@@ -230,7 +237,7 @@ describe('RecursiveShadowDOM', () => {
     const shadow = host.attachShadow({ mode: 'open' });
     // Empty shadow root
 
-    const results = window.VSC.DomUtils.findShadowMedia(shadow, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(shadow, 'video');
 
     expect(results.length).toBe(0);
   });
@@ -245,7 +252,7 @@ describe('RecursiveShadowDOM', () => {
     shadow.appendChild(div);
     shadow.appendChild(span);
 
-    const results = window.VSC.DomUtils.findShadowMedia(shadow, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(shadow, 'video');
 
     expect(results.length).toBe(0);
   });
@@ -260,13 +267,13 @@ describe('RecursiveShadowDOM', () => {
 
     // Shadow video
     const { host, video: shadowVideo } = createNestedShadowDOM(2);
-    shadowVideo.id = 'shadow';
+    shadowVideo!.id = 'shadow';
     container.appendChild(host);
 
-    const results = window.VSC.DomUtils.findShadowMedia(container, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(container, 'video');
 
     expect(results.length).toBe(2);
-    const ids = results.map((v) => v.id).sort();
+    const ids = results.map((v: Element) => v.id).sort();
     expect(ids).toEqual(['regular', 'shadow']);
   });
 
@@ -292,10 +299,10 @@ describe('RecursiveShadowDOM', () => {
     level2Shadow.appendChild(video2a);
     level2Shadow.appendChild(video2b);
 
-    const results = window.VSC.DomUtils.findShadowMedia(host, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(host, 'video');
 
     expect(results.length).toBe(3);
-    const ids = results.map((v) => v.id).sort();
+    const ids = results.map((v: Element) => v.id).sort();
     expect(ids).toEqual(['level-1', 'level-2a', 'level-2b']);
   });
 
@@ -309,7 +316,7 @@ describe('RecursiveShadowDOM', () => {
       container.appendChild(host);
     }
 
-    const results = window.VSC.DomUtils.findShadowMedia(container, 'video');
+    const results = window.VSC.DomUtils!.findShadowMedia(container, 'video');
 
     const endTime = performance.now();
     const duration = endTime - startTime;

@@ -89,8 +89,12 @@ export default async function runSettingsInjectionE2ETests(): Promise<{
           VSC_settings?: unknown;
         };
         const config = w.VSC?.videoSpeedConfig;
-        const fasterBinding = config?.settings?.keyBindings?.find((kb) => kb.action === 'faster');
-        const resetBinding = config?.settings?.keyBindings?.find((kb) => kb.action === 'reset');
+        const fasterBinding = config?.settings?.keyBindings?.find(
+          (kb: { action: string; value?: number }) => kb.action === 'faster'
+        );
+        const resetBinding = config?.settings?.keyBindings?.find(
+          (kb: { action: string; value?: number }) => kb.action === 'reset'
+        );
 
         return {
           hasConfig: !!config,
@@ -179,7 +183,9 @@ export default async function runSettingsInjectionE2ETests(): Promise<{
           };
         };
         const config = w.VSC?.videoSpeedConfig;
-        const fasterBinding = config?.settings?.keyBindings?.find((kb) => kb.action === 'faster');
+        const fasterBinding = config?.settings?.keyBindings?.find(
+          (kb: { action: string; value?: number }) => kb.action === 'faster'
+        );
         return fasterBinding?.value;
       });
 

@@ -8,17 +8,24 @@ import { loadCoreModules } from '../../helpers/module-loader';
 // Load all required modules
 await loadCoreModules();
 
-function createMockVideo(options = {}) {
+interface MockVideoOpts {
+  readyState?: number;
+  currentSrc?: string;
+  width?: number;
+  height?: number;
+}
+
+function createMockVideo(options: MockVideoOpts = {}) {
   const video = document.createElement('video');
 
   Object.defineProperties(video, {
     readyState: {
-      value: options.readyState || 2, // HAVE_CURRENT_DATA
+      value: options.readyState ?? 2,
       writable: true,
       configurable: true,
     },
     currentSrc: {
-      value: options.currentSrc || 'https://example.com/video.mp4',
+      value: options.currentSrc ?? 'https://example.com/video.mp4',
       writable: true,
       configurable: true,
     },
@@ -28,14 +35,8 @@ function createMockVideo(options = {}) {
       configurable: true,
     },
     getBoundingClientRect: {
-      value: () => ({
-        width: options.width || 640,
-        height: options.height || 360,
-        top: 0,
-        left: 0,
-        right: options.width || 640,
-        bottom: options.height || 360,
-      }),
+      value: () =>
+        new DOMRect(0, 0, options.width ?? 640, options.height ?? 360),
       writable: true,
       configurable: true,
     },
@@ -62,28 +63,25 @@ describe('Icon Integration', () => {
   });
 
   it('VideoController should register with state manager', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
     const mockVideo = createMockVideo();
     document.body.appendChild(mockVideo);
 
-    // Create controller - should register with state manager
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    const controller = new window.VSC.VideoController!(mockVideo, null, config, actionHandler);
 
-    // Verify controller is registered with state manager
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
-    expect(window.VSC.stateManager.controllers.has(controller.controllerId)).toBe(true);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.controllers.has(controller.controllerId)).toBe(true);
 
-    // Verify controller has ID
     expect(controller.controllerId).toBeDefined();
 
-    // Verify state manager has correct info
-    const controllerInfo = window.VSC.stateManager.controllers.get(controller.controllerId);
+    const controllerInfo = window.VSC.stateManager!.controllers.get(controller.controllerId);
     expect(controllerInfo).toBeDefined();
-    expect(controllerInfo.element).toBe(mockVideo);
-    expect(controllerInfo.tagName).toBe('VIDEO');
+    expect(controllerInfo!.element).toBe(mockVideo);
+    expect(controllerInfo!.tagName).toBe('VIDEO');
 
     // Cleanup
     controller.remove();
@@ -91,25 +89,26 @@ describe('Icon Integration', () => {
   });
 
   it('VideoController should unregister from state manager on removal', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
     const mockVideo = createMockVideo();
     document.body.appendChild(mockVideo);
 
     // Create controller
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    const controller = new window.VSC.VideoController!(mockVideo, null, config, actionHandler);
     const controllerId = controller.controllerId;
 
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
 
     // Remove controller - should unregister from state manager
     controller.remove();
 
     // Verify controller was unregistered from state manager
-    expect(window.VSC.stateManager.controllers.size).toBe(0);
-    expect(window.VSC.stateManager.controllers.has(controllerId)).toBe(false);
+    expect(window.VSC.stateManager!.controllers.size).toBe(0);
+    expect(window.VSC.stateManager!.controllers.has(controllerId)).toBe(false);
 
     // Verify controller is properly cleaned up
     expect(mockVideo.vsc).toBe(undefined);
@@ -119,10 +118,11 @@ describe('Icon Integration', () => {
   });
 
   it('Controllers should have unique IDs', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     // Create multiple videos
     const video1 = createMockVideo({ currentSrc: 'https://example.com/video1.mp4' });
@@ -132,8 +132,8 @@ describe('Icon Integration', () => {
     document.body.appendChild(video2);
 
     // Create controllers
-    const controller1 = new window.VSC.VideoController(video1, null, config, actionHandler);
-    const controller2 = new window.VSC.VideoController(video2, null, config, actionHandler);
+    const controller1 = new window.VSC.VideoController!(video1, null, config, actionHandler);
+    const controller2 = new window.VSC.VideoController!(video2, null, config, actionHandler);
 
     // Verify IDs are unique
     expect(controller1.controllerId).toBeDefined();
@@ -148,11 +148,12 @@ describe('Icon Integration', () => {
   });
 
   it('Audio controllers should register with state manager too', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
-    config.settings.audioBoolean = true; // Enable audio support
+    config.settings.audioBoolean = true;
 
-    const actionHandler = new window.VSC.ActionHandler(config);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
     const mockAudio = document.createElement('audio');
 
     Object.defineProperties(mockAudio, {
@@ -169,15 +170,13 @@ describe('Icon Integration', () => {
     document.body.appendChild(mockAudio);
 
     // Create audio controller - should register with state manager even if small
-    const controller = new window.VSC.VideoController(mockAudio, null, config, actionHandler);
+    const controller = new window.VSC.VideoController!(mockAudio, null, config, actionHandler);
 
-    // Verify controller is registered with state manager
-    expect(window.VSC.stateManager.controllers.size).toBe(1);
+    expect(window.VSC.stateManager!.controllers.size).toBe(1);
     expect(controller.controllerId).toBeDefined();
 
-    // Verify state manager has correct info for audio
-    const controllerInfo = window.VSC.stateManager.controllers.get(controller.controllerId);
-    expect(controllerInfo.tagName).toBe('AUDIO');
+    const controllerInfo = window.VSC.stateManager!.controllers.get(controller.controllerId);
+    expect(controllerInfo!.tagName).toBe('AUDIO');
 
     // Cleanup
     controller.remove();

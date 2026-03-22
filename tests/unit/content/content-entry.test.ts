@@ -8,8 +8,7 @@ import { isBlacklisted } from '../../../src/utils/blacklist';
 
 describe('Content Entry', () => {
   it('settings passed to page context should not contain blacklist', () => {
-    // Simulate what content-entry.js does
-    const settings = {
+    const settings: Record<string, unknown> = {
       lastSpeed: 1.5,
       enabled: true,
       blacklist: 'youtube.com\nnetflix.com',
@@ -17,9 +16,8 @@ describe('Content Entry', () => {
       keyBindings: [],
     };
 
-    // This is what content-entry.js does before injecting
-    delete settings.blacklist;
-    delete settings.enabled;
+    Reflect.deleteProperty(settings, 'blacklist');
+    Reflect.deleteProperty(settings, 'enabled');
 
     expect(settings.blacklist).toBe(undefined);
     expect(settings.enabled).toBe(undefined);
@@ -51,21 +49,23 @@ describe('Content Entry', () => {
   });
 
   it('enabled extension on non-blacklisted site should proceed', () => {
-    const settings = {
+    const settings: Record<string, unknown> = {
       enabled: true,
       blacklist: 'youtube.com',
       lastSpeed: 1.5,
     };
 
     const isDisabled = settings.enabled === false;
-    const isSiteBlacklisted = isBlacklisted(settings.blacklist, 'https://www.example.com/');
+    const isSiteBlacklisted = isBlacklisted(
+      settings.blacklist as string,
+      'https://www.example.com/'
+    );
 
     expect(isDisabled).toBe(false);
     expect(isSiteBlacklisted).toBe(false);
 
-    // Simulate stripping
-    delete settings.blacklist;
-    delete settings.enabled;
+    Reflect.deleteProperty(settings, 'blacklist');
+    Reflect.deleteProperty(settings, 'enabled');
 
     // Verify only safe settings remain
     const keys = Object.keys(settings);

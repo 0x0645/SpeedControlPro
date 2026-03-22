@@ -20,7 +20,7 @@ describe('Keyboard Shortcuts Saving', () => {
 
   // DEFAULT_SETTINGS keyBindings initialization tests
   it('DEFAULT_SETTINGS should have keyBindings populated', () => {
-    const defaults = window.VSC.Constants.DEFAULT_SETTINGS;
+    const defaults = window.VSC.Constants!.DEFAULT_SETTINGS;
 
     expect(defaults.keyBindings).toBeDefined();
     expect(defaults.keyBindings.length > 0).toBe(true);
@@ -45,9 +45,9 @@ describe('Keyboard Shortcuts Saving', () => {
   });
 
   it('DEFAULT_SETTINGS keyBindings should have proper structure', () => {
-    const defaults = window.VSC.Constants.DEFAULT_SETTINGS;
+    const defaults = window.VSC.Constants!.DEFAULT_SETTINGS;
 
-    defaults.keyBindings.forEach((binding, _index) => {
+    defaults.keyBindings.forEach((binding: { action: string; key: number; value: number; force: boolean; predefined: boolean }, _index: number) => {
       expect(typeof binding.action).toBe('string');
       expect(typeof binding.key).toBe('number');
       expect(typeof binding.value).toBe('number');
@@ -57,18 +57,17 @@ describe('Keyboard Shortcuts Saving', () => {
   });
 
   it('Fresh install should not require first-time initialization', async () => {
-    // Clear storage to simulate fresh install
     resetMockStorage();
 
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     // Should have loaded default bindings without first-time initialization
     expect(config.settings.keyBindings).toBeDefined();
     expect(config.settings.keyBindings.length > 0).toBe(true);
 
-    // Verify it matches DEFAULT_SETTINGS
-    const defaultsLength = window.VSC.Constants.DEFAULT_SETTINGS.keyBindings.length;
+    const defaultsLength = window.VSC.Constants!.DEFAULT_SETTINGS.keyBindings.length;
     expect(config.settings.keyBindings.length).toBe(defaultsLength);
   });
 
@@ -80,23 +79,24 @@ describe('Keyboard Shortcuts Saving', () => {
       { action: 'faster', key: 68, value: 0.2, force: false, predefined: true }, // D key
     ];
 
-    const config1 = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config1 = new VideoSpeedConfig();
     await config1.save({ keyBindings: existingBindings });
 
-    // Load with new instance to verify persistence
-    const config2 = new window.VSC.VideoSpeedConfig();
+    const config2 = new VideoSpeedConfig();
     await config2.load();
 
     expect(config2.settings.keyBindings.length >= existingBindings.length).toBe(true);
 
     // Verify bindings were loaded correctly
-    const slowerBinding = config2.settings.keyBindings.find((b) => b.action === 'slower');
+    const slowerBinding = config2.settings.keyBindings.find((b: { action: string }) => b.action === 'slower');
     expect(slowerBinding).toBeDefined();
-    expect(typeof slowerBinding.force).toBe('boolean');
+    expect(typeof slowerBinding!.force).toBe('boolean');
   });
 
   it('Should save keyBindings to storage correctly', async () => {
-    const config1 = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config1 = new VideoSpeedConfig();
 
     const customBindings = [
       { action: 'slower', key: 81, value: 0.15, force: true, predefined: true }, // Q key
@@ -105,8 +105,7 @@ describe('Keyboard Shortcuts Saving', () => {
 
     await config1.save({ keyBindings: customBindings });
 
-    // Verify saved by loading with new instance
-    const config2 = new window.VSC.VideoSpeedConfig();
+    const config2 = new VideoSpeedConfig();
     await config2.load();
 
     expect(config2.settings.keyBindings).toBeDefined();
@@ -119,49 +118,43 @@ describe('Keyboard Shortcuts Saving', () => {
       { action: 'faster', key: 83, value: 0.25, force: false, predefined: true }, // S key
     ];
 
-    // Save bindings
-    const config1 = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config1 = new VideoSpeedConfig();
     await config1.save({ keyBindings: originalBindings });
 
-    // Load with new instance
-    const config2 = new window.VSC.VideoSpeedConfig();
+    const config2 = new VideoSpeedConfig();
     await config2.load();
 
     const loadedBindings = config2.settings.keyBindings;
 
     // Find our bindings (they might be mixed with defaults)
-    const slowerBinding = loadedBindings.find((b) => b.action === 'slower');
-    const fasterBinding = loadedBindings.find((b) => b.action === 'faster');
+    const slowerBinding = loadedBindings.find((b: { action: string }) => b.action === 'slower');
+    const fasterBinding = loadedBindings.find((b: { action: string }) => b.action === 'faster');
 
     expect(slowerBinding).toBeDefined();
     expect(fasterBinding).toBeDefined();
 
-    // Values should be preserved with correct types
-    expect(typeof slowerBinding.force).toBe('boolean');
-    expect(typeof fasterBinding.force).toBe('boolean');
+    expect(typeof slowerBinding!.force).toBe('boolean');
+    expect(typeof fasterBinding!.force).toBe('boolean');
   });
 
   // Force Field Data Type Consistency tests
   it('Should handle string force values from legacy storage', async () => {
-    // This test validates that the force field is always boolean type
-    // The actual legacy string conversion happens in options.js save_options
-
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     // Should have proper boolean types in all bindings
     const bindings = config.settings.keyBindings;
-    bindings.forEach((binding, _index) => {
+    bindings.forEach((binding) => {
       expect(typeof binding.force).toBe('boolean');
     });
   });
 
   // Regression Prevention tests
   it('Should never lose all keyboard shortcuts', async () => {
-    // This test specifically prevents the original bug from returning
-
-    // Test that default shortcuts are always available
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     // Should always have shortcuts
@@ -170,16 +163,16 @@ describe('Keyboard Shortcuts Saving', () => {
     // Should have the essential shortcuts
     const requiredActions = ['slower', 'faster', 'display'];
     for (const action of requiredActions) {
-      const binding = config.settings.keyBindings.find((b) => b.action === action);
+      const binding = config.settings.keyBindings.find((b: { action: string }) => b.action === action);
       expect(binding).toBeDefined();
     }
   });
 
   it('Fresh install should always have functional default shortcuts', async () => {
-    // Simulate completely fresh install (empty storage)
     resetMockStorage();
 
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
     await config.load();
 
     // Should have all expected default shortcuts
@@ -196,10 +189,10 @@ describe('Keyboard Shortcuts Saving', () => {
     ];
 
     for (const action of requiredActions) {
-      const binding = config.settings.keyBindings.find((b) => b.action === action);
+      const binding = config.settings.keyBindings.find((b: { action: string }) => b.action === action);
       expect(binding).toBeDefined();
-      expect(typeof binding.key).toBe('number');
-      expect(binding.key > 0).toBe(true);
+      expect(typeof binding!.key).toBe('number');
+      expect(binding!.key > 0).toBe(true);
     }
   });
 });

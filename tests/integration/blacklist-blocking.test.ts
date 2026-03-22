@@ -4,13 +4,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../helpers/test-utils';
+import {
+  createMockVideo,
+  createMockDOM,
+  type MockDOM,
+} from '../helpers/test-utils';
 import { loadCoreModules } from '../helpers/module-loader';
 import { isBlacklisted } from '../../src/utils/blacklist';
 
 await loadCoreModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
 describe('Blacklist Blocking', () => {
   beforeEach(() => {
@@ -22,9 +26,7 @@ describe('Blacklist Blocking', () => {
   });
 
   afterEach(() => {
-    if (mockDOM) {
-      mockDOM.cleanup();
-    }
+    mockDOM?.cleanup();
   });
 
   it('Controller should NOT initialize when youtube.com is blacklisted', async () => {
@@ -36,7 +38,7 @@ describe('Blacklist Blocking', () => {
     expect(shouldBlock).toBe(true);
 
     // If blocked, controller should never be created
-    if (shouldBlock) {
+    if (shouldBlock && mockDOM) {
       const mockVideo = createMockVideo({ playbackRate: 1.0 });
       mockDOM.container.appendChild(mockVideo);
 
@@ -56,14 +58,19 @@ describe('Blacklist Blocking', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new (window.VSC.EventManager!)(config, null);
+    const actionHandler = new (window.VSC.ActionHandler!)(config, eventManager);
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
-    mockDOM.container.appendChild(mockVideo);
+    mockDOM!.container.appendChild(mockVideo);
 
     // Create controller (simulating what inject.js does)
-    mockVideo.vsc = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    mockVideo.vsc = new (window.VSC.VideoController!)(
+      mockVideo,
+      null,
+      config,
+      actionHandler
+    ) as import('../../src/types/settings').VscAttachment;
 
     expect(mockVideo.vsc).toBeDefined();
   });
@@ -83,8 +90,10 @@ describe('Blacklist Blocking', () => {
       logLevel: 3,
     };
 
-    // Simulate content-entry.js stripping sensitive keys before injection
-    const settingsForPage = { ...fullSettings };
+    const settingsForPage = { ...fullSettings } as Record<
+      string,
+      unknown
+    >;
     delete settingsForPage.blacklist;
     delete settingsForPage.enabled;
 
@@ -92,7 +101,7 @@ describe('Blacklist Blocking', () => {
     expect(settingsForPage.enabled).toBe(undefined);
     expect(settingsForPage.lastSpeed).toBe(1.5);
     expect(settingsForPage.rememberSpeed).toBe(true);
-    expect(settingsForPage.keyBindings.length).toBe(0);
+    expect((settingsForPage.keyBindings as unknown[]).length).toBe(0);
   });
 
   it('Default blacklist sites should be blocked', async () => {

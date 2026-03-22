@@ -4,13 +4,16 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../helpers/test-utils';
+import {
+  createMockVideo,
+  createMockDOM,
+  type MockDOM,
+} from '../helpers/test-utils';
 import { loadCoreModules } from '../helpers/module-loader';
 
-// Load all required modules
 await loadCoreModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
 describe('Module Integration', () => {
   beforeEach(() => {
@@ -31,20 +34,23 @@ describe('Module Integration', () => {
       expect(window.VSC.ActionHandler).toBeDefined();
       expect(window.VSC.EventManager).toBeDefined();
       expect(window.VSC.siteHandlerManager).toBeDefined();
-    } catch (error) {
-      throw new Error(`Module import failed: ${error.message}`);
+    } catch (err) {
+      throw new Error(`Module import failed: ${(err as Error).message}`);
     }
   });
 
   it('Site handlers should be configurable', async () => {
-    const siteHandlerManager = window.VSC.siteHandlerManager;
+    const siteHandlerManager = window.VSC.siteHandlerManager!;
 
     const handler = siteHandlerManager.getCurrentHandler();
     expect(handler).toBeDefined();
 
     // Should return positioning info
     const mockVideo = createMockVideo();
-    const positioning = siteHandlerManager.getControllerPosition(mockDOM.container, mockVideo);
+    const positioning = siteHandlerManager.getControllerPosition(
+      mockDOM!.container,
+      mockVideo
+    );
     expect(positioning).toBeDefined();
     expect(positioning.insertionPoint).toBeDefined();
   });
@@ -53,9 +59,8 @@ describe('Module Integration', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    // ActionHandler is created but not used in this test - just ensuring it can be instantiated
-    new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    new window.VSC.ActionHandler!(config, eventManager);
 
     // Should be able to get key bindings
     const fasterValue = config.getKeyBinding('faster');
@@ -66,13 +71,18 @@ describe('Module Integration', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo();
-    mockDOM.container.appendChild(mockVideo);
+    mockDOM!.container.appendChild(mockVideo);
 
-    const controller = new window.VSC.VideoController(mockVideo, null, config, actionHandler);
+    const controller = new window.VSC.VideoController!(
+      mockVideo,
+      null,
+      config,
+      actionHandler
+    );
 
     expect(controller).toBeDefined();
     expect(controller.div).toBeDefined();
@@ -83,8 +93,8 @@ describe('Module Integration', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
     eventManager.actionHandler = actionHandler;
 
     // Should be able to set up event listeners
@@ -100,15 +110,15 @@ describe('Module Integration', () => {
     const config = window.VSC.videoSpeedConfig;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo();
-    mockDOM.container.appendChild(mockVideo);
+    mockDOM!.container.appendChild(mockVideo);
 
     // Test when startHidden is false (default) - controller should be visible
     config.settings.startHidden = false;
-    const visibleController = new window.VSC.VideoController(
+    const visibleController = new window.VSC.VideoController!(
       mockVideo,
       null,
       config,
@@ -124,9 +134,9 @@ describe('Module Integration', () => {
     // Test when startHidden is true - controller should be hidden
     config.settings.startHidden = true;
     const mockVideo2 = createMockVideo();
-    mockDOM.container.appendChild(mockVideo2);
+    mockDOM!.container.appendChild(mockVideo2);
 
-    const hiddenController = new window.VSC.VideoController(
+    const hiddenController = new window.VSC.VideoController!(
       mockVideo2,
       null,
       config,

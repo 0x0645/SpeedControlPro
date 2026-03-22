@@ -4,13 +4,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockDOM } from '../../helpers/test-utils';
+import { createMockDOM, type MockDOM } from '../../helpers/test-utils';
 import { loadInjectModules } from '../../helpers/module-loader';
 
 // Load all required modules
 await loadInjectModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
 describe('HydrationFix', () => {
   beforeEach(() => {

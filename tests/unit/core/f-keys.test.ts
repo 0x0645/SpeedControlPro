@@ -21,7 +21,8 @@ describe('F-Keys', () => {
   });
 
   it('F13-F24 keys should be valid key bindings', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
 
     // Test saving F13-F24 key bindings
     const fKeyBindings = [];
@@ -48,7 +49,8 @@ describe('F-Keys', () => {
   });
 
   it('Special keys beyond standard range should be accepted', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
 
     // Test various special key codes that might exist on different keyboards
     const specialKeys = [
@@ -103,11 +105,12 @@ describe('F-Keys', () => {
   });
 
   it('EventManager should handle F-keys correctly', async () => {
-    const config = new window.VSC.VideoSpeedConfig();
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    const config = new VideoSpeedConfig();
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
     actionHandler.eventManager = eventManager;
 
     // Add F13 key binding
@@ -121,68 +124,45 @@ describe('F-Keys', () => {
       },
     ];
 
-    // Create a proper test video with controller
-    const mockVideo = {
-      playbackRate: 1.0,
-      paused: false,
-      muted: false,
-      currentTime: 0,
-      duration: 100,
-      classList: {
-        contains: (_className) => false, // Mock classList for 'vsc-cancelled' check
-      },
-      dispatchEvent: (_event) => {
-        /* Mock dispatchEvent for synthetic events */
-      },
-      // Add DOM-related properties for controller creation
-      tagName: 'VIDEO',
-      currentSrc: 'test-video.mp4',
-      src: 'test-video.mp4',
-      // Crucial: isConnected must be true for state manager to find it
-      isConnected: true,
+    const mockVideo = document.createElement('video') as HTMLVideoElement & {
+      vsc?: { div: HTMLElement; speedIndicator: { textContent: string } };
     };
-
-    // Manually register with state manager for this specific test
-    const mockControllerId = 'test-f-keys-controller';
+    mockVideo.playbackRate = 1.0;
+    Object.defineProperties(mockVideo, {
+      paused: { value: false, writable: true, configurable: true },
+      muted: { value: false, writable: true, configurable: true },
+      currentTime: { value: 0, writable: true, configurable: true },
+      duration: { value: 100, writable: true, configurable: true },
+      currentSrc: { value: 'test-video.mp4', writable: true, configurable: true },
+      src: { value: 'test-video.mp4', writable: true, configurable: true },
+    });
     mockVideo.vsc = { div: document.createElement('div'), speedIndicator: { textContent: '1.00' } };
-    window.VSC.stateManager.controllers.set(mockControllerId, {
-      id: mockControllerId,
+    document.body.appendChild(mockVideo);
+
+    const mockControllerId = 'test-f-keys-controller';
+    window.VSC.stateManager!.controllers.set(mockControllerId, {
+      controller: { video: mockVideo },
       element: mockVideo,
       videoSrc: mockVideo.currentSrc,
       tagName: mockVideo.tagName,
       created: Date.now(),
-      isActive: true,
     });
 
-    // Create a proper mock target element
-    const mockTarget = {
-      nodeName: 'DIV',
-      isContentEditable: false,
-      getRootNode: () => ({ host: null }), // Mock getRootNode for shadow DOM check
-    };
-
-    // Trigger F13 key
-    const f13Event = {
-      keyCode: 124,
-      target: mockTarget,
-      getModifierState: () => false,
-      preventDefault: () => {},
-      stopPropagation: () => {},
-    };
-
-    eventManager.handleKeydown(f13Event);
+    eventManager.handleKeydown(
+      new KeyboardEvent('keydown', { key: 'F13', keyCode: 124, bubbles: true })
+    );
 
     expect(mockVideo.playbackRate).toBe(1.1);
+
+    document.body.removeChild(mockVideo);
   });
 
   it('Key display names should work for all supported keys', () => {
-    // Test that key display logic handles various key types
-    const keyCodeAliases = window.VSC?.Constants?.keyCodeAliases || {};
+    const constants = window.VSC?.Constants as Record<string, unknown> | undefined;
+    const keyCodeAliases = (constants?.keyCodeAliases as Record<number, string>) ?? {};
 
-    // F13-F24 should have aliases
     for (let i = 13; i <= 24; i++) {
-      const keyCode = 111 + i; // F13=124, etc.
-
+      const keyCode = 111 + i;
       const hasAlias = keyCodeAliases[keyCode] !== undefined || keyCode === 124 + (i - 13);
       expect(hasAlias).toBe(true);
     }

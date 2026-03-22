@@ -4,33 +4,36 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockVideo, createMockDOM } from '../../helpers/test-utils';
+import {
+  createMockVideo,
+  createMockDOM,
+  type MockDOM,
+  type MockVideoOptions,
+} from '../../helpers/test-utils';
 import { loadCoreModules } from '../../helpers/module-loader';
+import type { IVideoSpeedConfig, IActionHandler } from '../../../src/types/settings';
 
 // Load all required modules
 await loadCoreModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
-/**
- * Helper function to create a test video with a controller
- * This replaces the old pattern of config.addMediaElement()
- */
-function createTestVideoWithController(config, actionHandler, videoOptions = {}) {
+function createTestVideoWithController(
+  config: IVideoSpeedConfig,
+  actionHandler: IActionHandler,
+  videoOptions: MockVideoOptions = {}
+) {
   const mockVideo = createMockVideo(videoOptions);
 
-  // Ensure the video has a proper parent element for DOM operations
   if (!mockVideo.parentElement) {
     const parentDiv = document.createElement('div');
     document.body.appendChild(parentDiv);
     parentDiv.appendChild(mockVideo);
   }
 
-  // Store initial playback rate to preserve test expectations
   const initialPlaybackRate = mockVideo.playbackRate;
 
-  // Create a proper VideoController for this video
-  new window.VSC.VideoController(mockVideo, mockVideo.parentElement, config, actionHandler);
+  new window.VSC.VideoController!(mockVideo, mockVideo.parentElement, config, actionHandler);
 
   // Restore initial playback rate for test consistency
   mockVideo.playbackRate = initialPlaybackRate;
@@ -43,8 +46,8 @@ describe('ActionHandler', () => {
     mockDOM = createMockDOM();
 
     // Clear state manager for tests
-    if (window.VSC && window.VSC.stateManager) {
-      window.VSC.stateManager.__resetForTests();
+    if (window.VSC?.stateManager) {
+      window.VSC.stateManager.__resetForTests?.();
     }
 
     // Initialize site handler manager for tests
@@ -60,28 +63,28 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should set video speed', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
-    config.settings.rememberSpeed = true; // Enable persistence for this test
+    config.settings.rememberSpeed = true;
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler);
 
     actionHandler.adjustSpeed(mockVideo, 2.0);
 
     expect(mockVideo.playbackRate).toBe(2.0);
-    expect(mockVideo.vsc.speedIndicator.textContent).toBe('2.00');
+    expect(mockVideo.vsc!.speedIndicator!.textContent).toBe('2.00');
     expect(config.settings.lastSpeed).toBe(2.0);
   });
 
   it('ActionHandler should handle faster action', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
@@ -91,11 +94,11 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should handle slower action', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
@@ -104,11 +107,11 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should respect speed limits', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 16.0 });
 
@@ -123,37 +126,37 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should handle pause action', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { paused: false });
 
-    actionHandler.runAction('pause');
+    actionHandler.runAction('pause', 0);
     expect(mockVideo.paused).toBe(true);
   });
 
   it('ActionHandler should handle mute action', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { muted: false });
-    actionHandler.runAction('muted');
+    actionHandler.runAction('muted', 0);
 
     expect(mockVideo.muted).toBe(true);
   });
 
   it('ActionHandler should handle volume actions', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { volume: 0.5 });
     actionHandler.runAction('louder', 0.1);
@@ -164,11 +167,11 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should handle seek actions', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 50 });
 
@@ -180,108 +183,107 @@ describe('ActionHandler', () => {
   });
 
   it('ActionHandler should handle mark and jump actions', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 30 });
 
     // Set mark
-    actionHandler.runAction('mark');
-    expect(mockVideo.vsc.mark).toBe(30);
+    actionHandler.runAction('mark', 0);
+    expect(mockVideo.vsc!.mark).toBe(30);
 
     // Change time
     mockVideo.currentTime = 50;
 
     // Jump to mark
-    actionHandler.runAction('jump');
+    actionHandler.runAction('jump', 0);
     expect(mockVideo.currentTime).toBe(30);
   });
 
   it('ActionHandler should work with mark/jump key bindings', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
     actionHandler.eventManager = eventManager;
 
     const mockVideo = createTestVideoWithController(config, actionHandler, { currentTime: 25 });
     // Set initial mark to undefined for test
-    mockVideo.vsc.mark = undefined;
+    mockVideo.vsc!.mark = undefined;
 
     // Verify mark key binding exists (M = 77)
-    const markBinding = config.settings.keyBindings.find((kb) => kb.action === 'mark');
+    const markBinding = config.settings.keyBindings.find(
+      (kb: { action: string; key: number }) => kb.action === 'mark'
+    );
     expect(markBinding).toBeDefined();
-    expect(markBinding.key).toBe(77);
+    expect(markBinding!.key).toBe(77);
 
-    // Verify jump key binding exists (J = 74)
-    const jumpBinding = config.settings.keyBindings.find((kb) => kb.action === 'jump');
+    const jumpBinding = config.settings.keyBindings.find(
+      (kb: { action: string; key: number }) => kb.action === 'jump'
+    );
     expect(jumpBinding).toBeDefined();
-    expect(jumpBinding.key).toBe(74);
+    expect(jumpBinding!.key).toBe(74);
 
-    // Simulate pressing M key to set mark
     eventManager.handleKeydown({
       keyCode: 77,
+      key: 'm',
       target: document.body,
       getModifierState: () => false,
       preventDefault: () => {},
       stopPropagation: () => {},
-    });
-    expect(mockVideo.vsc.mark).toBe(25);
+    } as unknown as KeyboardEvent);
+    expect(mockVideo.vsc!.mark).toBe(25);
 
     // Change video time
     mockVideo.currentTime = 60;
 
-    // Simulate pressing J key to jump to mark
     eventManager.handleKeydown({
       keyCode: 74,
+      key: 'j',
       target: document.body,
       getModifierState: () => false,
       preventDefault: () => {},
       stopPropagation: () => {},
-    });
+    } as unknown as KeyboardEvent);
     expect(mockVideo.currentTime).toBe(25);
   });
 
   it('ActionHandler should toggle display visibility', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const video = createTestVideoWithController(config, actionHandler);
-    const controller = video.vsc.div;
+    const controller = video.vsc!.div!;
 
-    // Initially controller should not be hidden
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
     expect(controller.classList.contains('vsc-manual')).toBe(false);
 
-    // First toggle - should hide
-    actionHandler.runAction('display', null, null);
+    actionHandler.runAction('display', 0, null);
     expect(controller.classList.contains('vsc-hidden')).toBe(true);
     expect(controller.classList.contains('vsc-manual')).toBe(true);
 
-    // Second toggle - should show
-    actionHandler.runAction('display', null, null);
+    actionHandler.runAction('display', 0, null);
     expect(controller.classList.contains('vsc-hidden')).toBe(false);
     expect(controller.classList.contains('vsc-manual')).toBe(true);
 
-    // Third toggle - should hide again
-    actionHandler.runAction('display', null, null);
+    actionHandler.runAction('display', 0, null);
     expect(controller.classList.contains('vsc-hidden')).toBe(true);
     expect(controller.classList.contains('vsc-manual')).toBe(true);
   });
 
   it('ActionHandler should work with videos in nested shadow DOM', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     // Create nested shadow DOM structure
     const host = document.createElement('div');
@@ -296,30 +298,20 @@ describe('ActionHandler', () => {
 
     document.body.appendChild(host);
 
-    // Create a proper mock speedIndicator that behaves like a real DOM element
-    const mockSpeedIndicator = {
-      textContent: '1.00',
-      // Add other properties that might be needed
-      nodeType: 1,
-      tagName: 'SPAN',
-    };
+    const mockSpeedIndicator = { textContent: '1.00', nodeType: 1, tagName: 'SPAN' };
 
-    // Mock video controller structure for shadow DOM video
     mockVideo.vsc = {
-      div: mockDOM.container,
+      div: mockDOM!.container,
       speedIndicator: mockSpeedIndicator,
-      // Add remove method to prevent errors during cleanup
       remove: () => {},
     };
 
-    // Register with state manager for runAction to find it
-    window.VSC.stateManager.controllers.set('shadow-dom-test', {
-      id: 'shadow-dom-test',
+    window.VSC.stateManager!.controllers.set('shadow-dom-test', {
+      controller: { video: mockVideo },
       element: mockVideo,
       videoSrc: mockVideo.currentSrc || 'test-video',
       tagName: 'VIDEO',
       created: Date.now(),
-      isActive: true,
     });
 
     // Test speed change on shadow DOM video
@@ -333,27 +325,27 @@ describe('ActionHandler', () => {
     // Test direct speed setting
     actionHandler.adjustSpeed(mockVideo, 2.5);
     expect(mockVideo.playbackRate).toBe(2.5);
-    expect(mockVideo.vsc.speedIndicator.textContent).toBe('2.50');
+    expect(mockVideo.vsc!.speedIndicator!.textContent).toBe('2.50');
   });
 
   it('adjustSpeed should handle absolute speed changes', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true; // Enable persistence for this test
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = {
-      div: mockDOM.container,
+      div: mockDOM!.container,
       speedIndicator: { textContent: '1.00' },
     };
 
     // Test absolute speed change
     actionHandler.adjustSpeed(mockVideo, 1.5);
     expect(mockVideo.playbackRate).toBe(1.5);
-    expect(mockVideo.vsc.speedIndicator.textContent).toBe('1.50');
+    expect(mockVideo.vsc!.speedIndicator!.textContent).toBe('1.50');
     expect(config.settings.lastSpeed).toBe(1.5);
 
     // Test speed limits
@@ -365,15 +357,15 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle relative speed changes', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = {
-      div: mockDOM.container,
+      div: mockDOM!.container,
       speedIndicator: { textContent: '1.00' },
     };
 
@@ -392,18 +384,18 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle external changes with force mode', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
     // Reset config state for clean test
     config.settings.rememberSpeed = false;
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo({ playbackRate: 1.0 });
     mockVideo.vsc = {
-      div: mockDOM.container,
+      div: mockDOM!.container,
       speedIndicator: { textContent: '1.00' },
     };
 
@@ -422,11 +414,11 @@ describe('ActionHandler', () => {
   });
 
   it('getPreferredSpeed should return global lastSpeed', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo({
       playbackRate: 1.0,
@@ -450,14 +442,14 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should validate input properly', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
-    // Test with null video
-    actionHandler.adjustSpeed(null, 1.5);
+    // Test with null video - use assertion for invalid input test
+    actionHandler.adjustSpeed(null as unknown as import('../../../src/types/settings').VscMedia, 1.5);
     // Should not throw, just log warning
 
     // Test with video without controller
@@ -467,19 +459,15 @@ describe('ActionHandler', () => {
     actionHandler.adjustSpeed(mockVideo, 1.5);
     expect(mockVideo.playbackRate).toBe(initialSpeed); // Should not change
 
-    // Test with invalid value types
     const validVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
-    // String value
-    actionHandler.adjustSpeed(validVideo, '1.5');
-    expect(validVideo.playbackRate).toBe(1.0); // Should not change
+    actionHandler.adjustSpeed(validVideo, '1.5' as unknown as number);
+    expect(validVideo.playbackRate).toBe(1.0);
 
-    // null value
-    actionHandler.adjustSpeed(validVideo, null);
-    expect(validVideo.playbackRate).toBe(1.0); // Should not change
+    actionHandler.adjustSpeed(validVideo, null as unknown as number);
+    expect(validVideo.playbackRate).toBe(1.0);
 
-    // undefined value
-    actionHandler.adjustSpeed(validVideo, undefined);
+    actionHandler.adjustSpeed(validVideo, undefined as unknown as number);
     expect(validVideo.playbackRate).toBe(1.0); // Should not change
 
     // NaN value
@@ -488,43 +476,43 @@ describe('ActionHandler', () => {
   });
 
   it('setSpeed should save global speed to storage', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true; // Enable persistence for this test
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const mockVideo = createMockVideo({
       playbackRate: 1.0,
       currentSrc: 'https://example.com/video.mp4',
     });
     mockVideo.vsc = {
-      div: mockDOM.container,
+      div: mockDOM!.container,
       speedIndicator: { textContent: '1.00' },
     };
 
-    // Track what gets saved
-    let savedData = null;
-    config.save = (data) => {
+    let savedData: { lastSpeed?: number } | null = null;
+    (config as typeof config & { save: (data: { lastSpeed?: number }) => void }).save = (
+      data: { lastSpeed?: number }
+    ) => {
       savedData = data;
     };
 
-    // Test that only lastSpeed is saved
     actionHandler.setSpeed(mockVideo, 1.5, 'internal');
 
-    expect(savedData.lastSpeed).toBe(1.5);
+    expect(savedData!.lastSpeed).toBe(1.5);
     expect(config.settings.lastSpeed).toBe(1.5); // Global speed updated
   });
 
   it('do not persist video speed to storage', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = false;
     config.settings.forceLastSavedSpeed = false;
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     // Create two different videos with controllers
     const video1 = createTestVideoWithController(config, actionHandler, {
@@ -534,10 +522,11 @@ describe('ActionHandler', () => {
       currentSrc: 'https://example.com/video2.mp4',
     });
 
-    // Track saves to verify behavior
-    const savedCalls = [];
+    const savedCalls: Array<Record<string, unknown>> = [];
     const originalSave = config.save;
-    config.save = (data) => {
+    (config as typeof config & { save: (data: Record<string, unknown>) => Promise<void> }).save = (
+      data: Record<string, unknown>
+    ) => {
       savedCalls.push({ ...data });
       return originalSave.call(config, data);
     };
@@ -555,15 +544,15 @@ describe('ActionHandler', () => {
   });
 
   it('rememberSpeed: true should only store global speed', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true;
     config.settings.forceLastSavedSpeed = false;
 
     // Clear any existing speeds from previous tests
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const video1 = createTestVideoWithController(config, actionHandler, {
       currentSrc: 'https://example.com/video1.mp4',
@@ -581,10 +570,10 @@ describe('ActionHandler', () => {
   });
 
   it('speed limits should be enforced correctly', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
     // Test minimum speed limit
@@ -602,10 +591,10 @@ describe('ActionHandler', () => {
 
   // COMPREHENSIVE PHASE 6 TESTS
   it('adjustSpeed should handle complex relative mode scenarios', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
 
     // Test relative from various starting points
@@ -628,12 +617,12 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle multiple source types comprehensively', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true;
     config.settings.lastSpeed = 1.25;
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
     const video = createTestVideoWithController(config, actionHandler, { playbackRate: 1.0 });
 
     // Test default source (should be 'internal')
@@ -656,11 +645,11 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should work correctly with multiple videos', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true; // Enable persistence for this test
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
 
     // Create multiple videos with different sources
     const video1 = createTestVideoWithController(config, actionHandler, {
@@ -690,11 +679,11 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle global mode with multiple videos', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = true; // Global mode
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
 
     const video1 = createTestVideoWithController(config, actionHandler, {
       currentSrc: 'https://site1.com/video1.mp4',
@@ -721,10 +710,10 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle edge cases and error conditions', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
 
     // Test with video missing vsc property
     const videoNoVsc = createMockVideo({ playbackRate: 1.0 });
@@ -733,14 +722,12 @@ describe('ActionHandler', () => {
     // Test with video missing speedIndicator
     const videoNoIndicator = createMockVideo({ playbackRate: 1.0 });
     videoNoIndicator.vsc = {}; // No speedIndicator
-    // Manually register with state manager for this edge case test
-    window.VSC.stateManager.controllers.set('test-no-indicator', {
-      id: 'test-no-indicator',
+    window.VSC.stateManager!.controllers.set('test-no-indicator', {
+      controller: { video: videoNoIndicator },
       element: videoNoIndicator,
       videoSrc: 'test-video',
       tagName: 'VIDEO',
       created: Date.now(),
-      isActive: true,
     });
     actionHandler.adjustSpeed(videoNoIndicator, 1.5); // Should work but skip UI update
     expect(videoNoIndicator.playbackRate).toBe(1.5);
@@ -756,13 +743,13 @@ describe('ActionHandler', () => {
   });
 
   it('adjustSpeed should handle complex force mode scenarios', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.forceLastSavedSpeed = true;
     config.settings.rememberSpeed = false; // Per-video mode
     config.settings.lastSpeed = 1.5;
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
 
     const video = createTestVideoWithController(config, actionHandler, {
       currentSrc: 'https://example.com/video.mp4',
@@ -778,11 +765,11 @@ describe('ActionHandler', () => {
   });
 
   it('reset action should use configured reset speed value', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     // Test with default reset speed (1.0)
     const mockVideo1 = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
@@ -802,30 +789,30 @@ describe('ActionHandler', () => {
     mockVideo3.playbackRate = 2.2;
     actionHandler.runAction('reset', 1.5); // Pass custom value
     expect(mockVideo3.playbackRate).toBe(1.5); // Should reset to configured value
-    expect(mockVideo3.vsc.speedBeforeReset).toBe(2.2); // Should remember previous speed
+    expect(mockVideo3.vsc!.speedBeforeReset).toBe(2.2); // Should remember previous speed
 
     // Second reset should restore remembered speed
     actionHandler.runAction('reset', 1.5); // Pass custom value
     expect(mockVideo3.playbackRate).toBe(2.2); // Should restore remembered speed
-    expect(mockVideo3.vsc.speedBeforeReset).toBe(null); // Should clear memory
+    expect(mockVideo3.vsc!.speedBeforeReset).toBe(null); // Should clear memory
   });
 
   it('lastSpeed should update during session even when rememberSpeed is false', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
     config.settings.rememberSpeed = false; // Disable cross-session persistence
     config.settings.lastSpeed = 1.0; // Start with default speed
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
-    // Track storage saves
-    const savedCalls = [];
+    const savedCalls: Array<Record<string, unknown>> = [];
     const originalSave = config.save;
-    config.save = function (data) {
-      savedCalls.push({ ...data });
-      return originalSave.call(config, data);
-    };
+    (config as typeof config & { save: (data: Record<string, unknown>) => Promise<void> }).save =
+      function (data: Record<string, unknown>) {
+        savedCalls.push({ ...data });
+        return originalSave.call(config, data);
+      };
 
     const video = createTestVideoWithController(config, actionHandler, {
       currentSrc: 'https://example.com/video.mp4',
@@ -840,34 +827,27 @@ describe('ActionHandler', () => {
     // No storage saves should occur
     expect(savedCalls.length).toBe(0);
 
-    // Simulate play event (which calls getTargetSpeed)
-    const targetSpeed = video.vsc.getTargetSpeed(video);
-    expect(targetSpeed).toBe(1.4);
+    expect(actionHandler.getPreferredSpeed(video)).toBe(1.4);
 
     // Restore original save method
     config.save = originalSave;
   });
 
   it('reset action should work with keyboard event simulation', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const actionHandler = new window.VSC.ActionHandler(config, null);
-    const eventManager = new window.VSC.EventManager(config, actionHandler);
+    const actionHandler = new window.VSC.ActionHandler!(config, null);
+    const eventManager = new window.VSC.EventManager!(config, actionHandler);
     actionHandler.eventManager = eventManager;
 
     // Test with custom reset speed via keyboard simulation
     config.setKeyBinding('reset', 1.5);
     const mockVideo = createTestVideoWithController(config, actionHandler, { playbackRate: 2.0 });
 
-    // Simulate pressing R key (82) - this will pass the configured value automatically
-    eventManager.handleKeydown({
-      keyCode: 82, // R key
-      target: document.body,
-      getModifierState: () => false,
-      preventDefault: () => {},
-      stopPropagation: () => {},
-    });
+    eventManager.handleKeydown(
+      new KeyboardEvent('keydown', { key: 'r', keyCode: 82, bubbles: true })
+    );
 
     expect(mockVideo.playbackRate).toBe(1.5); // Should use configured reset speed
   });

@@ -67,7 +67,7 @@ export class VideoController {
     }
   }
 
-  getTargetSpeed(media: HTMLMediaElement = this.video): number {
+  getTargetSpeed(_media: HTMLMediaElement = this.video): number {
     const hostname = location.hostname;
     const speed = (this.config.getEffectiveSetting('speed', hostname) as number) || 1.0;
     logger.debug(`Target speed for ${hostname}: ${speed}`);

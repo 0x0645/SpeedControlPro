@@ -48,7 +48,9 @@ function clearControllerBlinkTimeout(controller: HTMLElement & { blinkTimeOut?: 
   }
 }
 
-function clearEventManagerTimer(eventManager?: { timer?: number | null } | null): void {
+function clearEventManagerTimer(
+  eventManager?: { timer?: ReturnType<typeof setTimeout> | null } | null
+): void {
   if (eventManager?.timer) {
     clearTimeout(eventManager.timer);
     eventManager.timer = null;
@@ -57,7 +59,7 @@ function clearEventManagerTimer(eventManager?: { timer?: number | null } | null)
 
 function toggleControllerDisplay(
   video: HTMLMediaElement & { vsc?: { div?: HTMLElement } },
-  eventManager?: { timer?: number | null } | null
+  eventManager?: { timer?: ReturnType<typeof setTimeout> | null } | null
 ): void {
   logger.debug('Display action triggered');
 

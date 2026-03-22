@@ -4,15 +4,20 @@ describe('Popup Helpers', () => {
   it('chrome api helpers fall back to callback-style tab messaging', async () => {
     const originalChrome = global.chrome;
 
-    global.chrome = {
+    (global as typeof globalThis & { chrome?: unknown }).chrome = {
       tabs: {
-        query: (_queryInfo, callback) => callback([{ id: 12, url: 'https://example.com' }]),
-        sendMessage: (_tabId, _message, callback) => callback({ speed: 1.5 }),
+        query: (_queryInfo: unknown, callback: (tabs: Array<{ id: number; url: string }>) => void) =>
+          callback([{ id: 12, url: 'https://example.com' }]),
+        sendMessage: (
+          _tabId: number,
+          _message: unknown,
+          callback: (response: { speed?: number }) => void
+        ) => callback({ speed: 1.5 }),
       },
       runtime: {
         lastError: null,
-        sendMessage: (_message, callback) => callback(),
-        openOptionsPage: (callback) => callback(),
+        sendMessage: (_message: unknown, callback: () => void) => callback(),
+        openOptionsPage: (callback: () => void) => callback(),
       },
     };
 
@@ -20,12 +25,13 @@ describe('Popup Helpers', () => {
       await import('../../../src/utils/chrome-api');
 
     const tab = await queryActiveTab();
+    expect(tab).not.toBeNull();
     const response = await sendTabMessage(12, { type: 'TEST' });
     await sendRuntimeMessage({ type: 'PING' });
     await openOptionsPage();
 
-    expect(tab.id).toBe(12);
-    expect(response.speed).toBe(1.5);
+    expect(tab!.id).toBe(12);
+    expect((response as { speed?: number })?.speed).toBe(1.5);
 
     global.chrome = originalChrome;
   });

@@ -15,7 +15,7 @@ let preferredSpeed = 1.0;
 let currentSpeed = 1.0;
 let activeHostname = '';
 let activeSiteProfile: SiteProfile | undefined;
-let statusTimeout: number | undefined;
+let statusTimeout: ReturnType<typeof setTimeout> | undefined;
 
 type PopupStorage = {
   enabled?: boolean;

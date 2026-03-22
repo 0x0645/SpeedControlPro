@@ -6,12 +6,12 @@ await loadMinimalModules();
 const { BRIDGE_ACTIONS, BRIDGE_SOURCES } = await import('../../../src/utils/message-types');
 const { StorageManager } = await import('../../../src/core/storage-manager');
 
-let originalChrome;
+let originalChrome: typeof globalThis.chrome | undefined;
 
 describe('StorageManager', () => {
   beforeEach(() => {
-    originalChrome = global.chrome;
-    delete global.chrome;
+    originalChrome = (globalThis as typeof globalThis & { chrome?: unknown }).chrome;
+    Reflect.deleteProperty(globalThis as Record<string, unknown>, 'chrome');
     StorageManager.__resetForTests();
     window.VSC = window.VSC || {};
     window.VSC.StorageManager = StorageManager;
@@ -20,7 +20,7 @@ describe('StorageManager', () => {
 
   afterEach(() => {
     if (typeof originalChrome !== 'undefined') {
-      global.chrome = originalChrome;
+      (globalThis as typeof globalThis & { chrome?: unknown }).chrome = originalChrome;
     }
     StorageManager.__resetForTests();
   });
@@ -32,23 +32,23 @@ describe('StorageManager', () => {
     el.textContent = JSON.stringify({ lastSpeed: 1.5, rememberSpeed: true });
     document.body.appendChild(el);
 
-    const result = await window.VSC.StorageManager.get({ lastSpeed: 1.0, enabled: true });
+    const result = await StorageManager.get({ lastSpeed: 1.0, enabled: true });
 
     expect(result).toEqual({ lastSpeed: 1.5, enabled: true, rememberSpeed: true });
     expect(document.getElementById('vsc-settings-data')).toBe(null);
-    expect(window.VSC_settings.lastSpeed).toBe(1.5);
+    expect(window.VSC_settings?.lastSpeed).toBe(1.5);
   });
 
   it('StorageManager.set posts storage updates and merges page cache', async () => {
-    const posted = [];
+    const posted: unknown[] = [];
     const originalPostMessage = window.postMessage;
     window.VSC_settings = { lastSpeed: 1.25, rememberSpeed: false };
-    window.postMessage = (payload) => {
+    window.postMessage = (payload: unknown) => {
       posted.push(payload);
     };
 
     try {
-      await window.VSC.StorageManager.set({ rememberSpeed: true, audioBoolean: true });
+      await StorageManager.set({ rememberSpeed: true, audioBoolean: true });
 
       expect(posted[0]).toEqual({
         source: BRIDGE_SOURCES.PAGE,
@@ -68,21 +68,21 @@ describe('StorageManager', () => {
   it('StorageManager.remove and clear update page cache', async () => {
     window.VSC_settings = { lastSpeed: 1.25, rememberSpeed: true, audioBoolean: true };
 
-    await window.VSC.StorageManager.remove(['rememberSpeed']);
+    await StorageManager.remove(['rememberSpeed']);
     expect(window.VSC_settings).toEqual({ lastSpeed: 1.25, audioBoolean: true });
 
-    await window.VSC.StorageManager.clear();
+    await StorageManager.clear();
     expect(window.VSC_settings).toEqual({});
   });
 
   it('StorageManager.onChanged updates cache and notifies all page listeners', async () => {
     window.VSC_settings = { lastSpeed: 1.0, rememberSpeed: false };
 
-    const calls = [];
-    window.VSC.StorageManager.onChanged((changes) => {
+    const calls: Array<{ listener: string; changes: Record<string, { newValue?: unknown; oldValue?: unknown }> }> = [];
+    StorageManager.onChanged((changes: Record<string, { newValue?: unknown; oldValue?: unknown }>) => {
       calls.push({ listener: 'first', changes });
     });
-    window.VSC.StorageManager.onChanged((changes) => {
+    StorageManager.onChanged((changes: Record<string, { newValue?: unknown; oldValue?: unknown }>) => {
       calls.push({ listener: 'second', changes });
     });
 

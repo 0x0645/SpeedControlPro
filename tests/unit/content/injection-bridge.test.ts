@@ -8,12 +8,26 @@ const { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } =
 const { setupMessageBridge, __resetBridgeForTests } =
   await import('../../../src/content/injection-bridge');
 
+declare global {
+  let __bridgeTestDom: JSDOM;
+}
+
+const g = globalThis as typeof globalThis & {
+  window: typeof window;
+  document: Document;
+  Event: typeof Event;
+  CustomEvent: typeof CustomEvent;
+  MessageEvent: typeof MessageEvent;
+  chrome?: typeof chrome;
+  __bridgeTestDom?: JSDOM;
+};
+
 const originalGlobals = {
-  window: global.window,
-  document: global.document,
-  Event: global.Event,
-  CustomEvent: global.CustomEvent,
-  MessageEvent: global.MessageEvent,
+  window: g.window,
+  document: g.document,
+  Event: g.Event,
+  CustomEvent: g.CustomEvent,
+  MessageEvent: g.MessageEvent,
 };
 
 function installDom() {
@@ -22,7 +36,7 @@ function installDom() {
     pretendToBeVisual: true,
   });
 
-  Object.assign(global, {
+  Object.assign(g, {
     window: dom.window,
     document: dom.window.document,
     Event: dom.window.Event,
@@ -33,8 +47,20 @@ function installDom() {
   return dom;
 }
 
-function createChromeMock() {
-  const listeners = {
+interface BridgeTestListeners {
+  runtimeMessage: Array<
+    (message: unknown, _sender: unknown, sendResponse: (payload: unknown) => void) => boolean
+  >;
+  storageChanged: Array<(changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, areaName: string) => void>;
+  runtimeSendMessage: unknown[];
+  storageSet: unknown[];
+}
+
+function createChromeMock(): {
+  listeners: BridgeTestListeners;
+  chrome: typeof chrome;
+} {
+  const listeners: BridgeTestListeners = {
     runtimeMessage: [],
     storageChanged: [],
     runtimeSendMessage: [],
@@ -45,52 +71,66 @@ function createChromeMock() {
     listeners,
     chrome: {
       runtime: {
-        getURL: (path) => `chrome-extension://test/${path}`,
-        sendMessage: (payload) => {
+        getURL: (path: string) => `chrome-extension://test/${path}`,
+        sendMessage: (payload: unknown) => {
           listeners.runtimeSendMessage.push(payload);
         },
         onMessage: {
-          addListener: (callback) => {
+          addListener: (
+            callback: (
+              message: unknown,
+              sender: unknown,
+              sendResponse: (payload: unknown) => void
+            ) => boolean
+          ) => {
             listeners.runtimeMessage.push(callback);
           },
         },
       },
       storage: {
         sync: {
-          set: (payload) => {
+          set: (payload: unknown) => {
             listeners.storageSet.push(payload);
           },
-          get: (_defaults, callback) => {
+          get: (
+            _defaults: Record<string, unknown>,
+            callback: (result: Record<string, unknown>) => void
+          ) => {
             callback({ lastSpeed: 1.25 });
           },
         },
         onChanged: {
-          addListener: (callback) => {
+          addListener: (
+            callback: (
+              changes: Record<string, { oldValue?: unknown; newValue?: unknown }>,
+              areaName: string
+            ) => void
+          ) => {
             listeners.storageChanged.push(callback);
           },
         },
       },
-    },
+    } as typeof chrome,
   };
 }
 
 describe('InjectionBridge', () => {
   beforeEach(() => {
     __resetBridgeForTests();
-    global.__bridgeTestDom = installDom();
-    window.VSC = {};
+    g.__bridgeTestDom = installDom();
+    (g.window as typeof window & { VSC?: unknown }).VSC = {};
   });
 
   afterEach(() => {
-    delete global.chrome;
-    global.__bridgeTestDom.window.close();
-    delete global.__bridgeTestDom;
-    Object.assign(global, originalGlobals);
+    Reflect.deleteProperty(g, 'chrome');
+    g.__bridgeTestDom!.window.close();
+    Reflect.deleteProperty(g, '__bridgeTestDom');
+    Object.assign(g, originalGlobals);
   });
 
   it('setupMessageBridge registers listeners only once', () => {
-    const { chrome, listeners } = createChromeMock();
-    global.chrome = chrome;
+    const { chrome: chromeMock, listeners } = createChromeMock();
+    g.chrome = chromeMock;
 
     setupMessageBridge();
     setupMessageBridge();
@@ -100,16 +140,16 @@ describe('InjectionBridge', () => {
   });
 
   it('bridge forwards popup site info requests back to sendResponse', async () => {
-    const { chrome, listeners } = createChromeMock();
-    global.chrome = chrome;
+    const { chrome: chromeMock, listeners } = createChromeMock();
+    g.chrome = chromeMock;
 
     setupMessageBridge();
 
-    let responsePayload = null;
-    const keepChannelOpen = listeners.runtimeMessage[0](
+    let responsePayload: unknown = null;
+    const keepChannelOpen = listeners.runtimeMessage[0]!(
       { type: MESSAGE_TYPES.GET_SITE_INFO },
       null,
-      (payload) => {
+      (payload: unknown) => {
         responsePayload = payload;
       }
     );
@@ -133,19 +173,19 @@ describe('InjectionBridge', () => {
   });
 
   it('bridge forwards sync storage changes to page context', () => {
-    const { chrome, listeners } = createChromeMock();
-    global.chrome = chrome;
+    const { chrome: chromeMock, listeners } = createChromeMock();
+    g.chrome = chromeMock;
 
-    const postedMessages = [];
+    const postedMessages: unknown[] = [];
     const originalPostMessage = window.postMessage;
-    window.postMessage = (payload) => {
+    window.postMessage = (payload: unknown) => {
       postedMessages.push(payload);
     };
 
     try {
       setupMessageBridge();
 
-      listeners.storageChanged[0](
+      listeners.storageChanged[0]!(
         {
           lastSpeed: { oldValue: 1, newValue: 1.5 },
           rememberSpeed: { oldValue: false, newValue: true },
@@ -167,8 +207,8 @@ describe('InjectionBridge', () => {
   });
 
   it('bridge does not forward internal state updates to runtime', () => {
-    const { chrome, listeners } = createChromeMock();
-    global.chrome = chrome;
+    const { chrome: chromeMock, listeners } = createChromeMock();
+    g.chrome = chromeMock;
 
     setupMessageBridge();
 
@@ -195,7 +235,7 @@ describe('InjectionBridge', () => {
     );
 
     expect(listeners.runtimeSendMessage.length).toBe(1);
-    expect(listeners.runtimeSendMessage[0]).toEqual({
+    expect(listeners.runtimeSendMessage[0]!).toEqual({
       type: MESSAGE_TYPES.SET_SPEED,
       payload: { speed: 2 },
     });

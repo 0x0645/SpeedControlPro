@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMockDOM } from '../../helpers/test-utils';
+import { createMockDOM, type MockDOM } from '../../helpers/test-utils';
 import { loadCoreModules } from '../../helpers/module-loader';
 
-// Load all required modules (need core modules for videoSpeedConfig, ActionHandler, etc.)
 await loadCoreModules();
 
-let mockDOM;
+let mockDOM: MockDOM | undefined;
 
 // Test constants - values guaranteed to be below the minimum controller size limits
 const SMALL_AUDIO_SIZE = {
@@ -22,18 +21,31 @@ const SMALL_VIDEO_SIZE = {
   HEIGHT: 30, // Below VIDEO_MIN_HEIGHT (50)
 };
 
-function createMockAudio(options = {}) {
+interface MockAudioOptions {
+  readyState?: number;
+  currentSrc?: string;
+  width?: number;
+  height?: number;
+  playbackRate?: number;
+  currentTime?: number;
+  volume?: number;
+  muted?: boolean;
+  src?: string;
+  duration?: number;
+  paused?: boolean;
+}
+
+function createMockAudio(options: MockAudioOptions = {}) {
   const audio = document.createElement('audio');
 
-  // Set up properties
   Object.defineProperties(audio, {
     readyState: {
-      value: options.readyState || 2, // HAVE_CURRENT_DATA
+      value: options.readyState ?? 2,
       writable: true,
       configurable: true,
     },
     currentSrc: {
-      value: options.currentSrc || 'https://example.com/audio.mp3',
+      value: options.currentSrc ?? 'https://example.com/audio.mp3',
       writable: true,
       configurable: true,
     },
@@ -44,13 +56,10 @@ function createMockAudio(options = {}) {
     },
   });
 
-  // Mock getBoundingClientRect to return small size by default
-  audio.getBoundingClientRect = () => ({
-    top: 0,
-    left: 0,
-    width: options.width || SMALL_AUDIO_SIZE.WIDTH,
-    height: options.height || SMALL_AUDIO_SIZE.HEIGHT,
-  });
+  const width = options.width ?? SMALL_AUDIO_SIZE.WIDTH;
+  const height = options.height ?? SMALL_AUDIO_SIZE.HEIGHT;
+  audio.getBoundingClientRect = () =>
+    new DOMRect(0, 0, width, height);
 
   // Mock isConnected
   Object.defineProperty(audio, 'isConnected', {
@@ -66,51 +75,55 @@ function createMockAudio(options = {}) {
     configurable: true,
   });
 
-  // Add writable media element properties
-  audio.playbackRate = options.playbackRate || 1.0;
-  audio.currentTime = options.currentTime || 0;
-  audio.volume = options.volume || 1.0;
-  audio.muted = options.muted || false;
-  audio.src = options.src || 'https://example.com/audio.mp3';
+  const mutable = audio as HTMLAudioElement & {
+    playbackRate: number;
+    currentTime: number;
+    volume: number;
+    muted: boolean;
+    src: string;
+  };
+  mutable.playbackRate = options.playbackRate ?? 1.0;
+  mutable.currentTime = options.currentTime ?? 0;
+  mutable.volume = options.volume ?? 1.0;
+  mutable.muted = options.muted ?? false;
+  mutable.src = options.src ?? 'https://example.com/audio.mp3';
 
-  // Define read-only properties
   Object.defineProperty(audio, 'duration', {
-    value: options.duration || 100,
+    value: options.duration ?? 100,
     writable: false,
     configurable: true,
   });
 
   Object.defineProperty(audio, 'paused', {
-    value: options.paused || false,
+    value: options.paused ?? false,
     writable: false,
     configurable: true,
   });
 
-  // Add event handling for dispatchEvent
-  const eventListeners = new Map();
-  audio.addEventListener = (type, listener) => {
-    if (!eventListeners.has(type)) {
-      eventListeners.set(type, []);
+  const eventListeners = new Map<string, EventListener[]>();
+  audio.addEventListener = (type: string, listener: EventListenerOrEventListenerObject) => {
+    const key = type;
+    if (!eventListeners.has(key)) {
+      eventListeners.set(key, []);
     }
-    eventListeners.get(type).push(listener);
+    eventListeners.get(key)!.push(listener as EventListener);
   };
 
-  audio.removeEventListener = (type, listener) => {
-    if (eventListeners.has(type)) {
-      const listeners = eventListeners.get(type);
-      const index = listeners.indexOf(listener);
+  audio.removeEventListener = (type: string, listener: EventListenerOrEventListenerObject) => {
+    const listeners = eventListeners.get(type);
+    if (listeners) {
+      const index = listeners.indexOf(listener as EventListener);
       if (index > -1) {
         listeners.splice(index, 1);
       }
     }
   };
 
-  audio.dispatchEvent = (event) => {
-    if (eventListeners.has(event.type)) {
-      eventListeners.get(event.type).forEach((listener) => {
-        event.target = audio;
-        listener(event);
-      });
+  audio.dispatchEvent = (event: Event) => {
+    const listeners = eventListeners.get(event.type);
+    if (listeners) {
+      (event as { target?: EventTarget }).target = audio;
+      listeners.forEach((listener) => listener(event));
     }
     return true;
   };
@@ -130,19 +143,21 @@ describe('AudioSizeHandling', () => {
 
   afterEach(() => {
     if (mockDOM) {
-      mockDOM.cleanup();
+      mockDOM!.cleanup();
     }
   });
 
   it('MediaElementObserver should allow small audio when audioBoolean enabled', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    // Enable audio support
     config.settings.audioBoolean = true;
 
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
 
     const smallAudio = createMockAudio({
       width: SMALL_AUDIO_SIZE.WIDTH,
@@ -158,14 +173,16 @@ describe('AudioSizeHandling', () => {
   });
 
   it('MediaElementObserver should reject small audio when audioBoolean disabled', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    // Disable audio support
     config.settings.audioBoolean = false;
 
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
 
     const smallAudio = createMockAudio({
       width: SMALL_AUDIO_SIZE.WIDTH,
@@ -181,28 +198,29 @@ describe('AudioSizeHandling', () => {
   });
 
   it('VideoController should start visible for small audio elements', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    // Enable audio support
     config.settings.audioBoolean = true;
-    config.settings.startHidden = false; // Ensure global startHidden is false
+    config.settings.startHidden = false;
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const smallAudio = createMockAudio({
       width: SMALL_AUDIO_SIZE.WIDTH,
       height: SMALL_AUDIO_SIZE.HEIGHT,
     });
-    mockDOM.container.appendChild(smallAudio);
+    mockDOM!.container.appendChild(smallAudio);
 
-    // Use MediaElementObserver to determine if controller should start hidden
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
     const shouldStartHidden = observer.shouldStartHidden(smallAudio);
 
-    const controller = new window.VSC.VideoController(
+    const controller = new window.VSC.VideoController!(
       smallAudio,
       null,
       config,
@@ -219,26 +237,23 @@ describe('AudioSizeHandling', () => {
     // Verify it's not hidden (uses natural visibility)
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
-    // Cleanup
     controller.remove();
-    mockDOM.container.removeChild(smallAudio);
+    mockDOM!.container.removeChild(smallAudio);
   });
 
   it('VideoController should accept all video sizes', async () => {
-    const config = window.VSC.videoSpeedConfig;
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
 
-    // Create small video element
     const smallVideo = document.createElement('video');
-    smallVideo.getBoundingClientRect = () => ({
-      top: 0,
-      left: 0,
-      width: SMALL_VIDEO_SIZE.WIDTH, // Small but should still get visible controller
-      height: SMALL_VIDEO_SIZE.HEIGHT, // Small but should still get visible controller
-    });
+    smallVideo.getBoundingClientRect = () =>
+      new DOMRect(0, 0, SMALL_VIDEO_SIZE.WIDTH, SMALL_VIDEO_SIZE.HEIGHT);
 
     Object.defineProperty(smallVideo, 'isConnected', {
       value: true,
@@ -264,36 +279,36 @@ describe('AudioSizeHandling', () => {
   });
 
   it('Display toggle should work with audio controllers', async () => {
-    // Force a fresh config instance
-    window.VSC.videoSpeedConfig = new window.VSC.VideoSpeedConfig();
-    const config = window.VSC.videoSpeedConfig;
+    const { VideoSpeedConfig } = await import('../../../src/core/settings');
+    window.VSC.videoSpeedConfig = new VideoSpeedConfig();
+    const config = window.VSC.videoSpeedConfig!;
     await config.load();
 
-    // Clear state manager
     if (window.VSC && window.VSC.stateManager) {
       window.VSC.stateManager.__resetForTests();
     }
 
-    // Enable audio support
     config.settings.audioBoolean = true;
 
-    const eventManager = new window.VSC.EventManager(config, null);
-    const actionHandler = new window.VSC.ActionHandler(config, eventManager);
+    const eventManager = new window.VSC.EventManager!(config, null);
+    const actionHandler = new window.VSC.ActionHandler!(config, eventManager);
 
     const smallAudio = createMockAudio({
       width: SMALL_AUDIO_SIZE.WIDTH,
       height: SMALL_AUDIO_SIZE.HEIGHT,
     });
-    mockDOM.container.appendChild(smallAudio);
+    mockDOM!.container.appendChild(smallAudio);
 
-    // Use MediaElementObserver to determine if controller should start hidden
-    const siteHandler = new window.VSC.BaseSiteHandler();
-    const observer = new window.VSC.MediaElementObserver(config, siteHandler);
+    window.VSC.siteHandlerManager!.initialize(document);
+    const observer = new window.VSC.MediaElementObserver!(
+      config,
+      window.VSC.siteHandlerManager as unknown as import('../../../src/site-handlers/index').SiteHandlerManager
+    );
     const shouldStartHidden = observer.shouldStartHidden(smallAudio);
 
-    const controller = new window.VSC.VideoController(
+    const controller = new window.VSC.VideoController!(
       smallAudio,
-      mockDOM.container,
+      mockDOM!.container,
       config,
       actionHandler,
       shouldStartHidden
@@ -308,8 +323,7 @@ describe('AudioSizeHandling', () => {
     // Verify starts visible (size checks removed)
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
-    // Verify audio is tracked in state manager
-    const mediaElements = window.VSC.stateManager.getAllMediaElements();
+    const mediaElements = window.VSC.stateManager!.getAllMediaElements();
     expect(mediaElements.includes(smallAudio)).toBe(true);
     expect(mediaElements.length).toBe(1);
 
@@ -326,8 +340,7 @@ describe('AudioSizeHandling', () => {
     // Should be visible again after second toggle
     expect(controller.div.classList.contains('vsc-hidden')).toBe(false);
 
-    // Cleanup
     controller.remove();
-    mockDOM.container.removeChild(smallAudio);
+    mockDOM!.container.removeChild(smallAudio);
   });
 });
