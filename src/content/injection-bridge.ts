@@ -148,11 +148,12 @@ export function setupMessageBridge(): void {
 
   chrome.runtime.onMessage.addListener(
     (request: BridgeRuntimeRequest, _sender: unknown, sendResponse: (payload: unknown) => void) => {
-      window.dispatchEvent(
-        new CustomEvent('VSC_MESSAGE', {
-          detail: request,
-        })
-      );
+      // Use postMessage instead of CustomEvent so data crosses the
+      // content-script / main-world boundary reliably (CustomEvent.detail
+      // is null when read from a different JS world in Chrome MV3).
+      if (isRuntimeMessage(request)) {
+        postToPage(BRIDGE_ACTIONS.RUNTIME_MESSAGE_IN, request);
+      }
 
       if (isRuntimeMessage(request) && request.type === MESSAGE_TYPES.GET_SITE_INFO) {
         waitForPageResponse(BRIDGE_ACTIONS.CURRENT_SPEED_RESPONSE, sendResponse);
@@ -160,6 +161,7 @@ export function setupMessageBridge(): void {
       }
 
       if (isBridgeStatusRequest(request)) {
+        postToPage(BRIDGE_ACTIONS.STATUS_RESPONSE, request);
         waitForPageResponse(BRIDGE_ACTIONS.STATUS_RESPONSE, sendResponse);
         return true;
       }

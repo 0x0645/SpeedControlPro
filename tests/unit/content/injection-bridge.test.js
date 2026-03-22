@@ -1,4 +1,5 @@
-import { assert, SimpleTestRunner, wait } from '../../helpers/test-utils.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { wait } from '../../helpers/test-utils.js';
 import { JSDOM } from 'jsdom';
 
 const { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } =
@@ -6,8 +7,6 @@ const { BRIDGE_ACTIONS, BRIDGE_SOURCES, MESSAGE_TYPES } =
 
 const { setupMessageBridge, __resetBridgeForTests } =
   await import('../../../src/content/injection-bridge.ts');
-
-const runner = new SimpleTestRunner();
 
 const originalGlobals = {
   window: global.window,
@@ -75,130 +74,130 @@ function createChromeMock() {
   };
 }
 
-runner.beforeEach(() => {
-  __resetBridgeForTests();
-  global.__bridgeTestDom = installDom();
-  window.VSC = {};
-});
+describe('InjectionBridge', () => {
+  beforeEach(() => {
+    __resetBridgeForTests();
+    global.__bridgeTestDom = installDom();
+    window.VSC = {};
+  });
 
-runner.afterEach(() => {
-  delete global.chrome;
-  global.__bridgeTestDom.window.close();
-  delete global.__bridgeTestDom;
-  Object.assign(global, originalGlobals);
-});
+  afterEach(() => {
+    delete global.chrome;
+    global.__bridgeTestDom.window.close();
+    delete global.__bridgeTestDom;
+    Object.assign(global, originalGlobals);
+  });
 
-runner.test('setupMessageBridge registers listeners only once', () => {
-  const { chrome, listeners } = createChromeMock();
-  global.chrome = chrome;
+  it('setupMessageBridge registers listeners only once', () => {
+    const { chrome, listeners } = createChromeMock();
+    global.chrome = chrome;
 
-  setupMessageBridge();
-  setupMessageBridge();
-
-  assert.equal(listeners.runtimeMessage.length, 1);
-  assert.equal(listeners.storageChanged.length, 1);
-});
-
-runner.test('bridge forwards popup site info requests back to sendResponse', async () => {
-  const { chrome, listeners } = createChromeMock();
-  global.chrome = chrome;
-
-  setupMessageBridge();
-
-  let responsePayload = null;
-  const keepChannelOpen = listeners.runtimeMessage[0](
-    { type: MESSAGE_TYPES.GET_SITE_INFO },
-    null,
-    (payload) => {
-      responsePayload = payload;
-    }
-  );
-
-  assert.true(keepChannelOpen);
-
-  window.dispatchEvent(
-    new MessageEvent('message', {
-      source: window,
-      data: {
-        source: BRIDGE_SOURCES.PAGE,
-        action: BRIDGE_ACTIONS.CURRENT_SPEED_RESPONSE,
-        data: { speed: 1.75, hostname: 'example.com' },
-      },
-    })
-  );
-
-  await wait(0);
-
-  assert.deepEqual(responsePayload, { speed: 1.75, hostname: 'example.com' });
-});
-
-runner.test('bridge forwards sync storage changes to page context', () => {
-  const { chrome, listeners } = createChromeMock();
-  global.chrome = chrome;
-
-  const postedMessages = [];
-  const originalPostMessage = window.postMessage;
-  window.postMessage = (payload) => {
-    postedMessages.push(payload);
-  };
-
-  try {
+    setupMessageBridge();
     setupMessageBridge();
 
-    listeners.storageChanged[0](
-      {
-        lastSpeed: { oldValue: 1, newValue: 1.5 },
-        rememberSpeed: { oldValue: false, newValue: true },
-      },
-      'sync'
+    expect(listeners.runtimeMessage.length).toBe(1);
+    expect(listeners.storageChanged.length).toBe(1);
+  });
+
+  it('bridge forwards popup site info requests back to sendResponse', async () => {
+    const { chrome, listeners } = createChromeMock();
+    global.chrome = chrome;
+
+    setupMessageBridge();
+
+    let responsePayload = null;
+    const keepChannelOpen = listeners.runtimeMessage[0](
+      { type: MESSAGE_TYPES.GET_SITE_INFO },
+      null,
+      (payload) => {
+        responsePayload = payload;
+      }
     );
 
-    assert.deepEqual(postedMessages[0], {
-      source: BRIDGE_SOURCES.CONTENT,
-      action: BRIDGE_ACTIONS.STORAGE_CHANGED,
-      data: {
-        lastSpeed: 1.5,
-        rememberSpeed: true,
-      },
+    expect(keepChannelOpen).toBe(true);
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          source: BRIDGE_SOURCES.PAGE,
+          action: BRIDGE_ACTIONS.CURRENT_SPEED_RESPONSE,
+          data: { speed: 1.75, hostname: 'example.com' },
+        },
+      })
+    );
+
+    await wait(0);
+
+    expect(responsePayload).toEqual({ speed: 1.75, hostname: 'example.com' });
+  });
+
+  it('bridge forwards sync storage changes to page context', () => {
+    const { chrome, listeners } = createChromeMock();
+    global.chrome = chrome;
+
+    const postedMessages = [];
+    const originalPostMessage = window.postMessage;
+    window.postMessage = (payload) => {
+      postedMessages.push(payload);
+    };
+
+    try {
+      setupMessageBridge();
+
+      listeners.storageChanged[0](
+        {
+          lastSpeed: { oldValue: 1, newValue: 1.5 },
+          rememberSpeed: { oldValue: false, newValue: true },
+        },
+        'sync'
+      );
+
+      expect(postedMessages[0]).toEqual({
+        source: BRIDGE_SOURCES.CONTENT,
+        action: BRIDGE_ACTIONS.STORAGE_CHANGED,
+        data: {
+          lastSpeed: 1.5,
+          rememberSpeed: true,
+        },
+      });
+    } finally {
+      window.postMessage = originalPostMessage;
+    }
+  });
+
+  it('bridge does not forward internal state updates to runtime', () => {
+    const { chrome, listeners } = createChromeMock();
+    global.chrome = chrome;
+
+    setupMessageBridge();
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          source: BRIDGE_SOURCES.PAGE,
+          action: BRIDGE_ACTIONS.RUNTIME_MESSAGE,
+          data: { type: MESSAGE_TYPES.STATE_UPDATE },
+        },
+      })
+    );
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          source: BRIDGE_SOURCES.PAGE,
+          action: BRIDGE_ACTIONS.RUNTIME_MESSAGE,
+          data: { type: MESSAGE_TYPES.SET_SPEED, payload: { speed: 2 } },
+        },
+      })
+    );
+
+    expect(listeners.runtimeSendMessage.length).toBe(1);
+    expect(listeners.runtimeSendMessage[0]).toEqual({
+      type: MESSAGE_TYPES.SET_SPEED,
+      payload: { speed: 2 },
     });
-  } finally {
-    window.postMessage = originalPostMessage;
-  }
-});
-
-runner.test('bridge does not forward internal state updates to runtime', () => {
-  const { chrome, listeners } = createChromeMock();
-  global.chrome = chrome;
-
-  setupMessageBridge();
-
-  window.dispatchEvent(
-    new MessageEvent('message', {
-      source: window,
-      data: {
-        source: BRIDGE_SOURCES.PAGE,
-        action: BRIDGE_ACTIONS.RUNTIME_MESSAGE,
-        data: { type: MESSAGE_TYPES.STATE_UPDATE },
-      },
-    })
-  );
-
-  window.dispatchEvent(
-    new MessageEvent('message', {
-      source: window,
-      data: {
-        source: BRIDGE_SOURCES.PAGE,
-        action: BRIDGE_ACTIONS.RUNTIME_MESSAGE,
-        data: { type: MESSAGE_TYPES.SET_SPEED, payload: { speed: 2 } },
-      },
-    })
-  );
-
-  assert.equal(listeners.runtimeSendMessage.length, 1);
-  assert.deepEqual(listeners.runtimeSendMessage[0], {
-    type: MESSAGE_TYPES.SET_SPEED,
-    payload: { speed: 2 },
   });
 });
-
-export { runner as injectionBridgeTestRunner };

@@ -1,240 +1,228 @@
 // Import necessary modules
-import { installChromeMock, cleanupChromeMock } from '../../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert } from '../../helpers/test-utils.js';
+import { describe, it, expect } from 'vitest';
 import { loadObserverModules } from '../../helpers/module-loader.js';
 
 // Load all required modules
 await loadObserverModules();
 
-const runner = new SimpleTestRunner();
+describe('VideoMutationObserver', () => {
+  it('should process element nodes', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-runner.beforeEach(() => {
-  installChromeMock();
-});
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-runner.afterEach(() => {
-  cleanupChromeMock();
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should process element nodes', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const videoElement = document.createElement('video');
+    const divElement = document.createElement('div');
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    const mutation = {
+      type: 'childList',
+      addedNodes: [videoElement, divElement],
+      removedNodes: [],
+      target: document.body,
+    };
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    observer.processChildListMutation(mutation);
 
-  const videoElement = document.createElement('video');
-  const divElement = document.createElement('div');
+    // Video element should trigger callback
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+    expect(mockOnVideoFound[0].parent).toBe(document.body);
+  });
 
-  const mutation = {
-    type: 'childList',
-    addedNodes: [videoElement, divElement],
-    removedNodes: [],
-    target: document.body,
-  };
+  it('should skip non-element nodes', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  observer.processChildListMutation(mutation);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  // Video element should trigger callback
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoFound[0].video, videoElement);
-  assert.equal(mockOnVideoFound[0].parent, document.body);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should skip non-element nodes', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const textNode = document.createTextNode('text');
+    const commentNode = document.createComment('comment');
+    const videoElement = document.createElement('video');
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    const mutation = {
+      type: 'childList',
+      addedNodes: [textNode, commentNode, videoElement],
+      removedNodes: [],
+      target: document.body,
+    };
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    observer.processChildListMutation(mutation);
 
-  const textNode = document.createTextNode('text');
-  const commentNode = document.createComment('comment');
-  const videoElement = document.createElement('video');
+    // Only video element should be processed
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+    expect(mockOnVideoFound[0].parent).toBe(document.body);
+  });
 
-  const mutation = {
-    type: 'childList',
-    addedNodes: [textNode, commentNode, videoElement],
-    removedNodes: [],
-    target: document.body,
-  };
+  it('should handle removed video elements', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  observer.processChildListMutation(mutation);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  // Only video element should be processed
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoFound[0].video, videoElement);
-  assert.equal(mockOnVideoFound[0].parent, document.body);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should handle removed video elements', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const videoElement = document.createElement('video');
+    videoElement.vsc = { remove: () => {} };
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    const mutation = {
+      type: 'childList',
+      addedNodes: [],
+      removedNodes: [videoElement],
+      target: document.body,
+    };
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    observer.processChildListMutation(mutation);
 
-  const videoElement = document.createElement('video');
-  videoElement.vsc = { remove: () => {} };
+    expect(mockOnVideoRemoved.length).toBe(1);
+    expect(mockOnVideoRemoved[0]).toBe(videoElement);
+  });
 
-  const mutation = {
-    type: 'childList',
-    addedNodes: [],
-    removedNodes: [videoElement],
-    target: document.body,
-  };
+  it('should handle null and undefined nodes gracefully', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  observer.processChildListMutation(mutation);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  assert.equal(mockOnVideoRemoved.length, 1);
-  assert.equal(mockOnVideoRemoved[0], videoElement);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should handle null and undefined nodes gracefully', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const mutation = {
+      type: 'childList',
+      addedNodes: [null, undefined, document.createElement('video')],
+      removedNodes: [null, undefined],
+      target: document.body,
+    };
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    // Should not throw
+    observer.processChildListMutation(mutation);
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    // Only the video element should be processed
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoRemoved.length).toBe(0);
+  });
 
-  const mutation = {
-    type: 'childList',
-    addedNodes: [null, undefined, document.createElement('video')],
-    removedNodes: [null, undefined],
-    target: document.body,
-  };
+  it('should detect video elements in shadow DOM', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  // Should not throw
-  observer.processChildListMutation(mutation);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  // Only the video element should be processed
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoRemoved.length, 0);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should detect video elements in shadow DOM', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const videoElement = document.createElement('video');
+    shadowRoot.appendChild(videoElement);
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    observer.checkForVideoAndShadowRoot(host, document.body, true);
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+    expect(mockOnVideoFound[0].parent).toBe(videoElement.parentNode);
+  });
 
-  const host = document.createElement('div');
-  const shadowRoot = host.attachShadow({ mode: 'open' });
-  const videoElement = document.createElement('video');
-  shadowRoot.appendChild(videoElement);
+  it('should handle HTMLCollection children properly', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  observer.checkForVideoAndShadowRoot(host, document.body, true);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoFound[0].video, videoElement);
-  assert.equal(mockOnVideoFound[0].parent, videoElement.parentNode);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should handle HTMLCollection children properly', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    // Create a container with multiple child elements including a video
+    const container = document.createElement('div');
+    const videoElement = document.createElement('video');
+    const spanElement = document.createElement('span');
+    const pElement = document.createElement('p');
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    container.appendChild(spanElement);
+    container.appendChild(videoElement);
+    container.appendChild(pElement);
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    // Simulate the processNodeChildren call directly
+    observer.processNodeChildren(container, document.body, true);
 
-  // Create a container with multiple child elements including a video
-  const container = document.createElement('div');
-  const videoElement = document.createElement('video');
-  const spanElement = document.createElement('span');
-  const pElement = document.createElement('p');
+    // Should find the video element in the children
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+  });
 
-  container.appendChild(spanElement);
-  container.appendChild(videoElement);
-  container.appendChild(pElement);
+  it('should detect nested video elements', () => {
+    const mockConfig = { settings: {} };
+    const mockOnVideoFound = [];
+    const mockOnVideoRemoved = [];
 
-  // Simulate the processNodeChildren call directly
-  observer.processNodeChildren(container, document.body, true);
+    const onVideoFound = (video, parent) => {
+      mockOnVideoFound.push({ video, parent });
+    };
 
-  // Should find the video element in the children
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoFound[0].video, videoElement);
-});
+    const onVideoRemoved = (video) => {
+      mockOnVideoRemoved.push(video);
+    };
 
-runner.test('VideoMutationObserver should detect nested video elements', () => {
-  const mockConfig = { settings: {} };
-  const mockOnVideoFound = [];
-  const mockOnVideoRemoved = [];
+    const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
 
-  const onVideoFound = (video, parent) => {
-    mockOnVideoFound.push({ video, parent });
-  };
+    const container = document.createElement('div');
+    const innerDiv = document.createElement('div');
+    const videoElement = document.createElement('video');
+    innerDiv.appendChild(videoElement);
+    container.appendChild(innerDiv);
 
-  const onVideoRemoved = (video) => {
-    mockOnVideoRemoved.push(video);
-  };
+    observer.checkForVideoAndShadowRoot(container, document.body, true);
 
-  const observer = new window.VSC.VideoMutationObserver(mockConfig, onVideoFound, onVideoRemoved);
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+    expect(mockOnVideoFound[0].parent).toBe(videoElement.parentNode);
+  });
 
-  const container = document.createElement('div');
-  const innerDiv = document.createElement('div');
-  const videoElement = document.createElement('video');
-  innerDiv.appendChild(videoElement);
-  container.appendChild(innerDiv);
-
-  observer.checkForVideoAndShadowRoot(container, document.body, true);
-
-  assert.equal(mockOnVideoFound.length, 1);
-  assert.equal(mockOnVideoFound[0].video, videoElement);
-  assert.equal(mockOnVideoFound[0].parent, videoElement.parentNode);
-});
-
-runner.test(
-  'VideoMutationObserver should not duplicate media found through nested traversal',
-  () => {
+  it('should not duplicate media found through nested traversal', () => {
     const mockConfig = { settings: { audioBoolean: false } };
     const mockOnVideoFound = [];
 
@@ -254,35 +242,33 @@ runner.test(
 
     observer.processNodeChildren(host, document.body, true);
 
-    assert.equal(mockOnVideoFound.length, 1);
-    assert.equal(mockOnVideoFound[0].video, videoElement);
-  }
-);
+    expect(mockOnVideoFound.length).toBe(1);
+    expect(mockOnVideoFound[0].video).toBe(videoElement);
+  });
 
-runner.test('VideoMutationObserver.stop should disconnect shadow observers', () => {
-  const mockConfig = { settings: { audioBoolean: false } };
-  const observer = new window.VSC.VideoMutationObserver(
-    mockConfig,
-    () => {},
-    () => {}
-  );
+  it('VideoMutationObserver.stop should disconnect shadow observers', () => {
+    const mockConfig = { settings: { audioBoolean: false } };
+    const observer = new window.VSC.VideoMutationObserver(
+      mockConfig,
+      () => {},
+      () => {}
+    );
 
-  const host = document.createElement('div');
-  const shadowRoot = host.attachShadow({ mode: 'open' });
-  observer.observeShadowRoot(shadowRoot);
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    observer.observeShadowRoot(shadowRoot);
 
-  const trackedObserver = observer.shadowObservers.get(shadowRoot);
-  let disconnected = false;
-  const originalDisconnect = trackedObserver.disconnect.bind(trackedObserver);
-  trackedObserver.disconnect = () => {
-    disconnected = true;
-    originalDisconnect();
-  };
+    const trackedObserver = observer.shadowObservers.get(shadowRoot);
+    let disconnected = false;
+    const originalDisconnect = trackedObserver.disconnect.bind(trackedObserver);
+    trackedObserver.disconnect = () => {
+      disconnected = true;
+      originalDisconnect();
+    };
 
-  observer.stop();
+    observer.stop();
 
-  assert.true(disconnected);
-  assert.equal(observer.shadowObservers.size, 0);
+    expect(disconnected).toBe(true);
+    expect(observer.shadowObservers.size).toBe(0);
+  });
 });
-
-export { runner as mutationObserverTestRunner };

@@ -17,6 +17,7 @@ import {
   setAbsoluteSpeed,
   adjustRelativeSpeed,
 } from './inject-runtime';
+import { BRIDGE_ACTIONS, BRIDGE_SOURCES } from '../utils/message-types';
 import type { RuntimeMessage } from '../types/contracts';
 import type { VscMedia, VscAttachment } from '../types/settings';
 
@@ -106,13 +107,26 @@ class VideoSpeedExtension {
     }
 
     this.messageHandlerRegistered = true;
-    window.addEventListener('VSC_MESSAGE', (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      if (!isRuntimeMessage(detail)) {
+
+    // Listen for runtime messages forwarded from the content script via
+    // window.postMessage (CustomEvent.detail is null across JS worlds in MV3).
+    window.addEventListener('message', (event: MessageEvent) => {
+      if (event.source !== window) {
+        return;
+      }
+      if (
+        event.data?.source !== BRIDGE_SOURCES.CONTENT ||
+        event.data?.action !== BRIDGE_ACTIONS.RUNTIME_MESSAGE_IN
+      ) {
         return;
       }
 
-      this.handleRuntimeMessage(detail);
+      const message = event.data.data;
+      if (!isRuntimeMessage(message)) {
+        return;
+      }
+
+      this.handleRuntimeMessage(message);
     });
   }
 

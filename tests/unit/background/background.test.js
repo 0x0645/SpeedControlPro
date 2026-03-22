@@ -1,6 +1,4 @@
-import { assert, SimpleTestRunner } from '../../helpers/test-utils.js';
-
-const runner = new SimpleTestRunner();
+import { describe, it, expect } from 'vitest';
 
 function installBackgroundChromeMock() {
   const calls = {
@@ -80,19 +78,19 @@ function installBackgroundChromeMock() {
   return { calls, listeners };
 }
 
-runner.test('background helpers migrate config and update icons', async () => {
-  const { calls } = installBackgroundChromeMock();
-  const background = await import('../../../src/background.ts');
+describe('Background', () => {
+  it('background helpers migrate config and update icons', async () => {
+    const { calls } = installBackgroundChromeMock();
+    const background = await import('../../../src/background.ts');
 
-  await background.updateIcon(false);
-  await background.initializeIcon();
-  await background.migrateConfig();
+    await background.updateIcon(false);
+    await background.initializeIcon();
+    await background.migrateConfig();
 
-  assert.equal(calls.setIcon.length >= 2, true);
-  assert.deepEqual(calls.setStorage[0], {
-    siteProfiles: { 'example.com': { speed: 1.5 } },
+    expect(calls.setIcon.length >= 2).toBe(true);
+    expect(calls.setStorage[0]).toEqual({
+      siteProfiles: { 'example.com': { speed: 1.5 } },
+    });
+    expect(calls.removeStorage.length >= 2).toBe(true);
   });
-  assert.equal(calls.removeStorage.length >= 2, true);
 });
-
-export { runner as backgroundTestRunner };

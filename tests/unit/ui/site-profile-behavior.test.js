@@ -1,23 +1,20 @@
-import { assert, SimpleTestRunner } from '../../helpers/test-utils.js';
+import { describe, it, expect } from 'vitest';
 
-const runner = new SimpleTestRunner();
+describe('Site Profile Behavior', () => {
+  it('popup site profile toggle creates an empty profile shell', async () => {
+    const profile = {};
 
-runner.test('popup site profile toggle creates an empty profile shell', async () => {
-  const profile = {};
+    expect(profile).toEqual({});
+  });
 
-  assert.deepEqual(profile, {});
+  it('popup site profile label reflects non-speed profile overrides', async () => {
+    const { getProfileLabel } = await import('../../../src/ui/popup/popup.ts');
+
+    expect(getProfileLabel({})).toBe('Profile active');
+    expect(getProfileLabel({ controllerOpacity: 0.5 })).toBe('Profile active');
+    expect(getProfileLabel({ speed: 1.5 })).toBe('Saved (1.5x)');
+    expect(
+      getProfileLabel({ keyBindings: [{ action: 'faster', key: 68, value: 0.1 }] })
+    ).toBe('1 shortcut');
+  });
 });
-
-runner.test('popup site profile label reflects non-speed profile overrides', async () => {
-  const { getProfileLabel } = await import('../../../src/ui/popup/popup.ts');
-
-  assert.equal(getProfileLabel({}), 'Profile active');
-  assert.equal(getProfileLabel({ controllerOpacity: 0.5 }), 'Profile active');
-  assert.equal(getProfileLabel({ speed: 1.5 }), 'Saved (1.5x)');
-  assert.equal(
-    getProfileLabel({ keyBindings: [{ action: 'faster', key: 68, value: 0.1 }] }),
-    '1 shortcut'
-  );
-});
-
-export { runner as siteProfileBehaviorTestRunner };

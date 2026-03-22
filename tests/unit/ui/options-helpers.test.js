@@ -1,39 +1,37 @@
-import { assert, SimpleTestRunner } from '../../helpers/test-utils.js';
+import { describe, it, expect } from 'vitest';
 
-const runner = new SimpleTestRunner();
+describe('Options Helpers', () => {
+  it('options key helpers normalize key labels and force flags', async () => {
+    const { keyCodeToLabel, normalizeKeyBindingsForce } =
+      await import('../../../src/ui/options/options-key-utils.ts');
 
-runner.test('options key helpers normalize key labels and force flags', async () => {
-  const { keyCodeToLabel, normalizeKeyBindingsForce } =
-    await import('../../../src/ui/options/options-key-utils.ts');
+    expect(keyCodeToLabel(124)).toBe('F13');
+    expect(keyCodeToLabel(null)).toBe('null');
 
-  assert.equal(keyCodeToLabel(124), 'F13');
-  assert.equal(keyCodeToLabel(null), 'null');
+    const normalized = normalizeKeyBindingsForce([
+      { action: 'faster', key: 68, value: 0.1, force: 'true', predefined: true },
+      { action: 'slower', key: 83, value: 0.1, force: false, predefined: true },
+    ]);
 
-  const normalized = normalizeKeyBindingsForce([
-    { action: 'faster', key: 68, value: 0.1, force: 'true', predefined: true },
-    { action: 'slower', key: 83, value: 0.1, force: false, predefined: true },
-  ]);
+    expect(normalized[0].force).toBe(true);
+    expect(normalized[1].force).toBe(false);
+  });
 
-  assert.equal(normalized[0].force, true);
-  assert.equal(normalized[1].force, false);
+  it('options profile helpers build rows and clone bindings', async () => {
+    const { buildProfileKeybindingRow, cloneGlobalBindings } =
+      await import('../../../src/ui/options/options-profile-utils.ts');
+
+    const html = buildProfileKeybindingRow({ action: 'display', key: 86, value: 0 }, 0, [
+      'display',
+      'pause',
+    ]);
+
+    expect(html.includes('profile-kb-row')).toBe(true);
+    expect(html.includes('display:none')).toBe(true);
+
+    const cloned = cloneGlobalBindings([{ action: 'faster', key: 68, value: 0.1, predefined: true }]);
+
+    expect(cloned[0].predefined).toBe(false);
+    expect(cloned[0].action).toBe('faster');
+  });
 });
-
-runner.test('options profile helpers build rows and clone bindings', async () => {
-  const { buildProfileKeybindingRow, cloneGlobalBindings } =
-    await import('../../../src/ui/options/options-profile-utils.ts');
-
-  const html = buildProfileKeybindingRow({ action: 'display', key: 86, value: 0 }, 0, [
-    'display',
-    'pause',
-  ]);
-
-  assert.true(html.includes('profile-kb-row'));
-  assert.true(html.includes('display:none'));
-
-  const cloned = cloneGlobalBindings([{ action: 'faster', key: 68, value: 0.1, predefined: true }]);
-
-  assert.equal(cloned[0].predefined, false);
-  assert.equal(cloned[0].action, 'faster');
-});
-
-export { runner as optionsHelpersTestRunner };

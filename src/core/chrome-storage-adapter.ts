@@ -10,10 +10,6 @@ function isPromiseLike<T>(value: unknown): value is Promise<T> {
   return !!value && typeof (value as Promise<T>).then === 'function';
 }
 
-function supportsPromiseApi(method: (...args: unknown[]) => unknown, argCount: number): boolean {
-  return method.length <= argCount;
-}
-
 function reportStorageError(operation: string, runtimeError: Error, context: unknown = {}): Error {
   const error = new Error(`Storage ${operation} failed: ${runtimeError.message}`);
   console.error(`Chrome storage ${operation} failed:`, runtimeError);
@@ -26,39 +22,48 @@ export function hasChromeStorage(): boolean {
 }
 
 export async function getFromChromeStorage(
-  defaults: Partial<ExtensionSettings> = {}
+  defaults: Partial<ExtensionSettings> | null = null
 ): Promise<StorageSnapshot> {
-  const getMethod = getChromeStorage().get;
-  if (supportsPromiseApi(getMethod, 1)) {
-    const promiseResult = getMethod(defaults);
-    if (isPromiseLike<StorageSnapshot>(promiseResult)) {
-      const storage = await promiseResult;
-      logger.debug('Retrieved settings from chrome.storage');
-      return storage;
-    }
-  }
+  const storageArea = getChromeStorage();
+  const getMethod = storageArea.get;
 
-  return new Promise((resolve) => {
-    getMethod(defaults, (storage: StorageSnapshot) => {
+  // Pass null to chrome.storage.get when defaults is empty or null,
+  // so Chrome returns ALL stored items instead of nothing.
+  const keys =
+    defaults !== null && Object.keys(defaults).length > 0 ? defaults : null;
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (storage: StorageSnapshot) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       logger.debug('Retrieved settings from chrome.storage');
       resolve(storage);
+    };
+
+    const result = getMethod.call(storageArea, keys, (storage: StorageSnapshot) => {
+      finish(storage);
     });
+
+    if (isPromiseLike<StorageSnapshot>(result)) {
+      void result.then(finish).catch(reject);
+    }
   });
 }
 
 export async function setInChromeStorage(data: StorageSnapshot): Promise<void> {
-  const setMethod = getChromeStorage().set;
-  if (supportsPromiseApi(setMethod, 1)) {
-    const promiseResult = setMethod(data);
-    if (isPromiseLike<void>(promiseResult)) {
-      await promiseResult;
-      logger.debug('Settings saved to chrome.storage');
-      return;
-    }
-  }
+  const storageArea = getChromeStorage();
+  const setMethod = storageArea.set;
 
   return new Promise((resolve, reject) => {
-    setMethod(data, () => {
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       if (globalThis.chrome.runtime.lastError) {
         reject(reportStorageError('save', globalThis.chrome.runtime.lastError, data));
         return;
@@ -66,23 +71,26 @@ export async function setInChromeStorage(data: StorageSnapshot): Promise<void> {
 
       logger.debug('Settings saved to chrome.storage');
       resolve();
-    });
+    };
+
+    const result = setMethod.call(storageArea, data, finish);
+    if (isPromiseLike<void>(result)) {
+      void result.then(finish).catch(reject);
+    }
   });
 }
 
 export async function removeFromChromeStorage(keys: string[]): Promise<void> {
-  const removeMethod = getChromeStorage().remove;
-  if (supportsPromiseApi(removeMethod, 1)) {
-    const promiseResult = removeMethod(keys);
-    if (isPromiseLike<void>(promiseResult)) {
-      await promiseResult;
-      logger.debug('Keys removed from storage');
-      return;
-    }
-  }
+  const storageArea = getChromeStorage();
+  const removeMethod = storageArea.remove;
 
   return new Promise((resolve, reject) => {
-    removeMethod(keys, () => {
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       if (globalThis.chrome.runtime.lastError) {
         reject(
           reportStorageError('remove', globalThis.chrome.runtime.lastError, {
@@ -94,23 +102,26 @@ export async function removeFromChromeStorage(keys: string[]): Promise<void> {
 
       logger.debug('Keys removed from storage');
       resolve();
-    });
+    };
+
+    const result = removeMethod.call(storageArea, keys, finish);
+    if (isPromiseLike<void>(result)) {
+      void result.then(finish).catch(reject);
+    }
   });
 }
 
 export async function clearChromeStorage(): Promise<void> {
-  const clearMethod = getChromeStorage().clear;
-  if (supportsPromiseApi(clearMethod, 0)) {
-    const promiseResult = clearMethod();
-    if (isPromiseLike<void>(promiseResult)) {
-      await promiseResult;
-      logger.debug('Storage cleared');
-      return;
-    }
-  }
+  const storageArea = getChromeStorage();
+  const clearMethod = storageArea.clear;
 
   return new Promise((resolve, reject) => {
-    clearMethod(() => {
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       if (globalThis.chrome.runtime.lastError) {
         reject(
           reportStorageError('clear', globalThis.chrome.runtime.lastError, {
@@ -122,7 +133,12 @@ export async function clearChromeStorage(): Promise<void> {
 
       logger.debug('Storage cleared');
       resolve();
-    });
+    };
+
+    const result = clearMethod.call(storageArea, finish);
+    if (isPromiseLike<void>(result)) {
+      void result.then(finish).catch(reject);
+    }
   });
 }
 

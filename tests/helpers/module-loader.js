@@ -46,6 +46,19 @@ function ensureDomGlobals() {
 }
 
 /**
+ * Register imported modules on window.VSC so tests can access them
+ * as globals (matching the bundled IIFE extension pattern).
+ */
+function registerOnVSC(modules) {
+  const win = typeof window !== 'undefined' ? window : global.window;
+  if (!win) return;
+  win.VSC = win.VSC || {};
+  for (const [name, value] of Object.entries(modules)) {
+    win.VSC[name] = value;
+  }
+}
+
+/**
  * Load all core modules required for most tests
  * This mimics the global module loading pattern used in the extension
  */
@@ -53,30 +66,30 @@ export async function loadCoreModules() {
   ensureDomGlobals();
 
   // Core utilities (order matters due to dependencies)
-  await import('../../src/utils/constants.ts');
-  await import('../../src/utils/logger.ts');
-  await import('../../src/utils/dom-utils.ts');
-  await import('../../src/utils/event-manager.ts');
+  const constants = await import('../../src/utils/constants.ts');
+  const loggerMod = await import('../../src/utils/logger.ts');
+  const domUtils = await import('../../src/utils/dom-utils.ts');
+  const eventManagerMod = await import('../../src/utils/event-manager.ts');
 
   // Storage and settings
-  await import('../../src/core/storage-manager.ts');
-  await import('../../src/core/settings.ts');
+  const storageManagerMod = await import('../../src/core/storage-manager.ts');
+  const settingsMod = await import('../../src/core/settings.ts');
 
   // State management
-  await import('../../src/core/state-manager.ts');
+  const stateManagerMod = await import('../../src/core/state-manager.ts');
 
   // Site handlers
-  await import('../../src/site-handlers/base-handler.ts');
+  const baseHandler = await import('../../src/site-handlers/base-handler.ts');
   await import('../../src/site-handlers/netflix-handler.ts');
   await import('../../src/site-handlers/youtube-handler.ts');
   await import('../../src/site-handlers/facebook-handler.ts');
   await import('../../src/site-handlers/amazon-handler.ts');
   await import('../../src/site-handlers/apple-handler.ts');
-  await import('../../src/site-handlers/index.ts');
+  const siteHandlersMod = await import('../../src/site-handlers/index.ts');
 
   // Core controllers
-  await import('../../src/core/action-handler.ts');
-  await import('../../src/core/video-controller.ts');
+  const actionHandlerMod = await import('../../src/core/action-handler.ts');
+  const videoControllerMod = await import('../../src/core/video-controller.ts');
 
   // UI components
   await import('../../src/ui/controls.ts');
@@ -85,8 +98,28 @@ export async function loadCoreModules() {
   await import('../../src/ui/vsc-controller-element.ts');
 
   // Observers
-  await import('../../src/observers/mutation-observer.ts');
-  await import('../../src/observers/media-observer.ts');
+  const mutationObserverMod = await import('../../src/observers/mutation-observer.ts');
+  const mediaObserverMod = await import('../../src/observers/media-observer.ts');
+
+  // Register all modules on window.VSC for test access
+  registerOnVSC({
+    Constants: constants,
+    DEFAULT_SETTINGS: constants.DEFAULT_SETTINGS,
+    SPEED_LIMITS: constants.SPEED_LIMITS,
+    logger: loggerMod.logger,
+    DomUtils: domUtils,
+    EventManager: eventManagerMod.EventManager,
+    StorageManager: storageManagerMod.StorageManager,
+    VideoSpeedConfig: settingsMod.VideoSpeedConfig,
+    videoSpeedConfig: settingsMod.videoSpeedConfig,
+    stateManager: stateManagerMod.stateManager,
+    BaseSiteHandler: baseHandler.BaseSiteHandler,
+    siteHandlerManager: siteHandlersMod.siteHandlerManager,
+    ActionHandler: actionHandlerMod.ActionHandler,
+    VideoController: videoControllerMod.VideoController,
+    VideoMutationObserver: mutationObserverMod.VideoMutationObserver,
+    MediaElementObserver: mediaObserverMod.MediaElementObserver,
+  });
 }
 
 /**
@@ -94,24 +127,46 @@ export async function loadCoreModules() {
  */
 export async function loadInjectModules() {
   await loadCoreModules();
-  await import('../../src/content/inject.ts');
+  const injectMod = await import('../../src/content/inject.ts');
+  registerOnVSC({
+    VideoSpeedExtension: injectMod.VideoSpeedExtension,
+  });
 }
 
 /**
  * Load minimal modules for lightweight tests
  */
 export async function loadMinimalModules() {
-  await import('../../src/utils/constants.ts');
-  await import('../../src/utils/logger.ts');
-  await import('../../src/core/storage-manager.ts');
-  await import('../../src/core/settings.ts');
+  ensureDomGlobals();
+
+  const constants = await import('../../src/utils/constants.ts');
+  const loggerMod = await import('../../src/utils/logger.ts');
+  const storageManagerMod = await import('../../src/core/storage-manager.ts');
+  const settingsMod = await import('../../src/core/settings.ts');
+
+  registerOnVSC({
+    Constants: constants,
+    DEFAULT_SETTINGS: constants.DEFAULT_SETTINGS,
+    logger: loggerMod.logger,
+    StorageManager: storageManagerMod.StorageManager,
+    VideoSpeedConfig: settingsMod.VideoSpeedConfig,
+    videoSpeedConfig: settingsMod.videoSpeedConfig,
+  });
 }
 
 /**
  * Load observer modules for observer tests
  */
 export async function loadObserverModules() {
-  await import('../../src/utils/logger.ts');
-  await import('../../src/utils/dom-utils.ts');
-  await import('../../src/observers/mutation-observer.ts');
+  ensureDomGlobals();
+
+  const loggerMod = await import('../../src/utils/logger.ts');
+  const domUtils = await import('../../src/utils/dom-utils.ts');
+  const mutationObserverMod = await import('../../src/observers/mutation-observer.ts');
+
+  registerOnVSC({
+    logger: loggerMod.logger,
+    DomUtils: domUtils,
+    VideoMutationObserver: mutationObserverMod.VideoMutationObserver,
+  });
 }

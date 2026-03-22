@@ -175,26 +175,50 @@ function setActiveSiteProfile(profile?: SiteProfile): void {
   refreshSiteProfileUI();
 }
 
+function reportPopupError(message: string, error: unknown): void {
+  console.error(message, error);
+  setStatusMessage(message, 'error');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  void loadSettingsAndInitialize();
-  void initializeSiteProfile();
+  initializeSpeedControls();
+
+  void loadSettingsAndInitialize().catch((error) => {
+    reportPopupError('Could not load current speed.', error);
+    updateSpeedUI(currentSpeed || 1.0);
+  });
+
+  void initializeSiteProfile().catch((error) => {
+    reportPopupError('Could not load site profile.', error);
+  });
 
   query<HTMLElement>('#config').addEventListener('click', () => {
-    void openOptionsPage();
+    void openOptionsPage().catch((error) => {
+      reportPopupError('Could not open settings.', error);
+    });
   });
 
   query<HTMLElement>('#site-profile-edit').addEventListener('click', () => {
-    void openOptionsPage();
+    void openOptionsPage().catch((error) => {
+      reportPopupError('Could not open settings.', error);
+    });
   });
 
   query<HTMLElement>('#disable').addEventListener('click', function () {
     const isCurrentlyEnabled = !this.classList.contains('disabled');
-    void toggleEnabled(!isCurrentlyEnabled, settingsSavedReloadMessage);
+    void toggleEnabled(!isCurrentlyEnabled, settingsSavedReloadMessage).catch((error) => {
+      reportPopupError('Could not update extension state.', error);
+    });
   });
 
-  void getSyncStorage({ enabled: true }).then((storage) => {
-    toggleEnabledUI(storage.enabled !== false);
-  });
+  void getSyncStorage({ enabled: true })
+    .then((storage) => {
+      toggleEnabledUI(storage.enabled !== false);
+    })
+    .catch((error) => {
+      reportPopupError('Could not read extension state.', error);
+      toggleEnabledUI(true);
+    });
 
   async function toggleEnabled(
     enabled: boolean,
@@ -222,7 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
       },
     });
 
-    void sendRuntimeMessage({ type: EXTENSION_MESSAGES.TOGGLE, enabled });
+    void sendRuntimeMessage({ type: EXTENSION_MESSAGES.TOGGLE, enabled }).catch((error) => {
+      console.error('Failed to notify background about toggle:', error);
+    });
   }
 
   function settingsSavedReloadMessage(enabled: boolean): void {
@@ -246,6 +272,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     refreshSiteProfileUI();
+  }
+
+  async function refreshSpeedFromTab(tabId: number, fallbackSpeed?: number): Promise<void> {
+    const response = await sendTabRuntimeMessage<SiteInfoResponse>(tabId, {
+      type: MESSAGE_TYPES.GET_SITE_INFO,
+    });
+
+    const resolvedSpeed =
+      typeof response?.speed === 'number' && Number.isFinite(response.speed)
+        ? response.speed
+        : (fallbackSpeed ?? null);
+
+    if (resolvedSpeed !== null) {
+      updateSpeedUI(resolvedSpeed);
+    }
+  }
+
+  function scheduleSpeedRefresh(tabId: number, fallbackSpeed?: number, delay = 120): void {
+    globalThis.setTimeout(() => {
+      void refreshSpeedFromTab(tabId, fallbackSpeed).catch((error) => {
+        console.error('Failed to reconcile popup speed:', error);
+      });
+    }, delay);
   }
 
   function getEffectiveKeyBindings(
@@ -303,8 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
       increaseBtn.dataset.delta = String(fasterStep);
     }
 
-    initializeSpeedControls();
-
     const tabId = activeTab?.id;
     const fallbackSpeed = storage.lastSpeed ?? 1.0;
 
@@ -319,16 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sessionSpeed = (session.tabSpeeds || {})[String(tabId)];
     updateSpeedUI(typeof sessionSpeed === 'number' ? sessionSpeed : fallbackSpeed);
 
-    const response = await sendTabRuntimeMessage<SiteInfoResponse>(tabId, {
-      type: MESSAGE_TYPES.GET_SITE_INFO,
-    });
-    const resolvedSpeed =
-      typeof response?.speed === 'number' && Number.isFinite(response.speed)
-        ? response.speed
-        : null;
-    if (resolvedSpeed !== null) {
-      updateSpeedUI(resolvedSpeed);
-    }
+    await refreshSpeedFromTab(tabId, fallbackSpeed);
   }
 
   function initializeSpeedControls(): void {
@@ -352,44 +390,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setSpeed(speed: number): void {
-    void queryActiveTab().then((tab) => {
-      if (!tab?.id) {
-        return;
-      }
+    void queryActiveTab()
+      .then((tab) => {
+        if (!tab?.id) {
+          setStatusMessage('Open a supported page to control playback.', 'error');
+          return;
+        }
 
-      void sendTabRuntimeMessage(tab.id, {
-        type: MESSAGE_TYPES.SET_SPEED,
-        payload: { speed },
+        void sendTabRuntimeMessage(tab.id, {
+          type: MESSAGE_TYPES.SET_SPEED,
+          payload: { speed },
+        }).catch((error) => {
+          reportPopupError('Could not control playback on this page.', error);
+        });
+        updateSpeedUI(speed);
+        scheduleSpeedRefresh(tab.id, speed);
+      })
+      .catch((error) => {
+        reportPopupError('Could not access the active tab.', error);
       });
-      updateSpeedUI(speed);
-    });
   }
 
   function adjustSpeed(delta: number): void {
-    void queryActiveTab().then((tab) => {
-      if (!tab?.id) {
-        return;
-      }
+    void queryActiveTab()
+      .then((tab) => {
+        if (!tab?.id) {
+          setStatusMessage('Open a supported page to control playback.', 'error');
+          return;
+        }
 
-      const tabId = tab.id;
-      const estimated = Math.min(16, Math.max(0.07, Number((currentSpeed + delta).toFixed(2))));
-      updateSpeedUI(estimated);
+        const tabId = tab.id;
+        const estimated = Math.min(16, Math.max(0.07, Number((currentSpeed + delta).toFixed(2))));
+        updateSpeedUI(estimated);
 
-      void sendTabRuntimeMessage(tabId, {
-        type: MESSAGE_TYPES.ADJUST_SPEED,
-        payload: { delta },
-      });
-
-      globalThis.setTimeout(() => {
-        void sendTabRuntimeMessage<SiteInfoResponse>(tabId, {
-          type: MESSAGE_TYPES.GET_SITE_INFO,
-        }).then((response) => {
-          if (response && typeof response.speed === 'number') {
-            updateSpeedUI(response.speed);
-          }
+        void sendTabRuntimeMessage(tabId, {
+          type: MESSAGE_TYPES.ADJUST_SPEED,
+          payload: { delta },
+        }).catch((error) => {
+          reportPopupError('Could not control playback on this page.', error);
         });
-      }, 100);
-    });
+        scheduleSpeedRefresh(tabId, estimated);
+        scheduleSpeedRefresh(tabId, estimated, 320);
+      })
+      .catch((error) => {
+        reportPopupError('Could not access the active tab.', error);
+      });
   }
 
   async function initializeSiteProfile(): Promise<void> {
@@ -410,35 +455,43 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveSiteProfile((storage.siteProfiles || {})[activeHostname]);
 
     byId<HTMLButtonElement>('site-speed-toggle').addEventListener('click', () => {
-      void getSyncStorage({ siteProfiles: {} }).then(async (storage) => {
-        const profiles = storage.siteProfiles || {};
-        const nextProfile = {
-          ...(activeSiteProfile || profiles[activeHostname] || {}),
-          speed: Number(currentSpeed.toFixed(2)),
-        };
+      void getSyncStorage({ siteProfiles: {} })
+        .then(async (storage) => {
+          const profiles = storage.siteProfiles || {};
+          const nextProfile = {
+            ...(activeSiteProfile || profiles[activeHostname] || {}),
+            speed: Number(currentSpeed.toFixed(2)),
+          };
 
-        profiles[activeHostname] = nextProfile;
+          profiles[activeHostname] = nextProfile;
 
-        await setSyncStorage({ siteProfiles: profiles });
-        setActiveSiteProfile(nextProfile);
-        setStatusMessage(`Saved ${currentSpeed.toFixed(2)}x for ${activeHostname}.`, 'success');
-      });
+          await setSyncStorage({ siteProfiles: profiles });
+          setActiveSiteProfile(nextProfile);
+          setStatusMessage(`Saved ${currentSpeed.toFixed(2)}x for ${activeHostname}.`, 'success');
+        })
+        .catch((error) => {
+          reportPopupError('Could not save site profile.', error);
+        });
     });
 
     byId<HTMLButtonElement>('site-profile-clear').addEventListener('click', () => {
-      void getSyncStorage({ siteProfiles: {} }).then(async (storage) => {
-        const profiles = storage.siteProfiles || {};
+      void getSyncStorage({ siteProfiles: {} })
+        .then(async (storage) => {
+          const profiles = storage.siteProfiles || {};
 
-        if (profiles[activeHostname] === undefined && activeSiteProfile === undefined) {
-          return;
-        }
+          if (profiles[activeHostname] === undefined && activeSiteProfile === undefined) {
+            return;
+          }
 
-        delete profiles[activeHostname];
+          delete profiles[activeHostname];
 
-        await setSyncStorage({ siteProfiles: profiles });
-        setActiveSiteProfile(undefined);
-        setStatusMessage(`This site is back on global defaults.`, 'success');
-      });
+          await setSyncStorage({ siteProfiles: profiles });
+          setActiveSiteProfile(undefined);
+          setStatusMessage(`This site is back on global defaults.`, 'success');
+        })
+        .catch((error) => {
+          reportPopupError('Could not clear site profile.', error);
+        });
     });
   }
 });

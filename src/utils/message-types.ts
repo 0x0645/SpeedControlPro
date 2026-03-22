@@ -17,6 +17,7 @@ export const BRIDGE_SOURCES = Object.freeze({
 export const BRIDGE_ACTIONS = Object.freeze({
   STORAGE_UPDATE: 'storage-update',
   RUNTIME_MESSAGE: 'runtime-message',
+  RUNTIME_MESSAGE_IN: 'runtime-message-in',
   GET_STORAGE: 'get-storage',
   STORAGE_DATA: 'storage-data',
   STORAGE_CHANGED: 'storage-changed',

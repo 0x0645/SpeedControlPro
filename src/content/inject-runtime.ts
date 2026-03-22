@@ -162,7 +162,7 @@ export function resetMediaSpeed(
 }
 
 export function handleRuntimeMessage(message: RuntimeMessage, handlers: RuntimeHandlers): void {
-  const videos = handlers.getAllMediaElements();
+  const videos = getMediaForSpeedRead(handlers.getAllMediaElements);
 
   if (isSetSpeedMessage(message)) {
     setAbsoluteSpeed(videos, message.payload.speed, handlers.actionHandler);
@@ -185,9 +185,6 @@ export function handleRuntimeMessage(message: RuntimeMessage, handlers: RuntimeH
   }
 
   if (isGetSiteInfoMessage(message)) {
-    postSiteInfo(
-      getMediaForSpeedRead(handlers.getAllMediaElements),
-      handlers.config || videoSpeedConfig
-    );
+    postSiteInfo(videos, handlers.config || videoSpeedConfig);
   }
 }

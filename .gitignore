@@ -10,3 +10,4 @@ local
 dist
 tests/e2e/screenshots
 node_modules
+coverage/

@@ -3,218 +3,193 @@
  * Using global variables to match browser extension architecture
  */
 
-import {
-  installChromeMock,
-  cleanupChromeMock,
-  resetMockStorage,
-} from '../../helpers/chrome-mock.js';
-import { SimpleTestRunner, assert, wait } from '../../helpers/test-utils.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { wait } from '../../helpers/test-utils.js';
 import { loadCoreModules } from '../../helpers/module-loader.js';
+import { resetMockStorage } from '../../setup.ts';
 
 // Load all required modules
 await loadCoreModules();
 
-const runner = new SimpleTestRunner();
+describe('Settings', () => {
+  beforeEach(() => {
+    // Clear any injected settings for clean tests
+    if (window.VSC && window.VSC.StorageManager) {
+      window.VSC.StorageManager.__resetForTests?.();
+    }
 
-runner.beforeEach(() => {
-  installChromeMock();
-  resetMockStorage();
+    if (window.VSC && window.VSC.videoSpeedConfig) {
+      window.VSC.videoSpeedConfig.__resetForTests?.();
+    }
+  });
 
-  // Clear any injected settings for clean tests
-  if (window.VSC && window.VSC.StorageManager) {
-    window.VSC.StorageManager.__resetForTests?.();
-  }
+  it('VideoSpeedConfig should initialize with default settings', () => {
+    // Access VideoSpeedConfig from global scope
+    const config = window.VSC.videoSpeedConfig;
+    expect(config.settings).toBeDefined();
+    expect(config.settings.enabled).toBe(true);
+    expect(config.settings.lastSpeed).toBe(1.0);
+    expect(config.settings.logLevel).toBe(3);
+  });
 
-  if (window.VSC && window.VSC.videoSpeedConfig) {
-    window.VSC.videoSpeedConfig.__resetForTests?.();
-  }
-});
+  it('VideoSpeedConfig should load settings from storage', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    const settings = await config.load();
 
-runner.afterEach(() => {
-  cleanupChromeMock();
-});
+    expect(settings).toBeDefined();
+    expect(settings.enabled).toBe(true);
+    expect(settings.lastSpeed).toBe(1.0);
+  });
 
-runner.test('VideoSpeedConfig should initialize with default settings', () => {
-  // Access VideoSpeedConfig from global scope
-  const config = window.VSC.videoSpeedConfig;
-  assert.exists(config.settings);
-  assert.equal(config.settings.enabled, true);
-  assert.equal(config.settings.lastSpeed, 1.0);
-  assert.equal(config.settings.logLevel, 3);
-});
+  it('VideoSpeedConfig should save settings to storage', async () => {
+    const config = window.VSC.videoSpeedConfig;
+    await config.load();
 
-runner.test('VideoSpeedConfig should load settings from storage', async () => {
-  const config = window.VSC.videoSpeedConfig;
-  const settings = await config.load();
+    await config.save({ lastSpeed: 2.0, enabled: false });
 
-  assert.exists(settings);
-  assert.equal(settings.enabled, true);
-  assert.equal(settings.lastSpeed, 1.0);
-});
+    expect(config.settings.lastSpeed).toBe(2.0);
+    expect(config.settings.enabled).toBe(false);
+  });
 
-runner.test('VideoSpeedConfig should save settings to storage', async () => {
-  const config = window.VSC.videoSpeedConfig;
-  await config.load();
+  it('VideoSpeedConfig should handle key bindings', async () => {
+    // Create fresh config instance
+    const config = new window.VSC.VideoSpeedConfig();
 
-  await config.save({ lastSpeed: 2.0, enabled: false });
+    // Load settings with defaults
+    await config.load();
 
-  assert.equal(config.settings.lastSpeed, 2.0);
-  assert.equal(config.settings.enabled, false);
-});
+    const fasterValue = config.getKeyBinding('faster');
+    expect(fasterValue).toBe(0.1);
 
-runner.test('VideoSpeedConfig should handle key bindings', async () => {
-  // Create fresh config instance
-  const config = new window.VSC.VideoSpeedConfig();
+    config.setKeyBinding('faster', 0.2);
+    const updatedValue = config.getKeyBinding('faster');
+    expect(updatedValue).toBe(0.2);
+  });
 
-  // Load settings with defaults
-  await config.load();
+  it('VideoSpeedConfig should have state manager available', () => {
+    const config = window.VSC.videoSpeedConfig;
 
-  const fasterValue = config.getKeyBinding('faster');
-  assert.equal(fasterValue, 0.1);
+    // Verify state manager is available (media tracking moved there)
+    expect(window.VSC.stateManager).toBeDefined();
+    expect(typeof window.VSC.stateManager.getAllMediaElements).toBe('function');
+    expect(typeof window.VSC.stateManager.registerController).toBe('function');
+    expect(typeof window.VSC.stateManager.removeController).toBe('function');
+  });
 
-  config.setKeyBinding('faster', 0.2);
-  const updatedValue = config.getKeyBinding('faster');
-  assert.equal(updatedValue, 0.2);
-});
+  it('VideoSpeedConfig should handle invalid key binding requests gracefully', () => {
+    const config = window.VSC.videoSpeedConfig;
 
-runner.test('VideoSpeedConfig should have state manager available', () => {
-  const config = window.VSC.videoSpeedConfig;
+    const result = config.getKeyBinding('nonexistent');
+    expect(result).toBe(false);
 
-  // Verify state manager is available (media tracking moved there)
-  assert.exists(window.VSC.stateManager, 'State manager should be available');
-  assert.equal(
-    typeof window.VSC.stateManager.getAllMediaElements,
-    'function',
-    'State manager should have getAllMediaElements method'
-  );
-  assert.equal(
-    typeof window.VSC.stateManager.registerController,
-    'function',
-    'State manager should have registerController method'
-  );
-  assert.equal(
-    typeof window.VSC.stateManager.removeController,
-    'function',
-    'State manager should have removeController method'
-  );
-});
+    // Should not throw
+    config.setKeyBinding('nonexistent', 123);
+  });
 
-runner.test('VideoSpeedConfig should handle invalid key binding requests gracefully', () => {
-  const config = window.VSC.videoSpeedConfig;
+  it('VideoSpeedConfig should debounce lastSpeed saves', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
 
-  const result = config.getKeyBinding('nonexistent');
-  assert.equal(result, false);
+    let saveCount = 0;
+    const originalSet = window.VSC.StorageManager.set;
 
-  // Should not throw
-  config.setKeyBinding('nonexistent', 123);
-});
+    window.VSC.StorageManager.set = async () => {
+      saveCount++;
+    };
 
-runner.test('VideoSpeedConfig should debounce lastSpeed saves', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
-  await config.load();
+    // Multiple rapid speed updates
+    await config.save({ lastSpeed: 1.5 });
+    await config.save({ lastSpeed: 1.8 });
+    await config.save({ lastSpeed: 2.0 });
 
-  let saveCount = 0;
-  const originalSet = window.VSC.StorageManager.set;
+    // Should not have saved yet
+    expect(saveCount).toBe(0);
+    expect(config.settings.lastSpeed).toBe(2.0); // In-memory should update immediately
 
-  window.VSC.StorageManager.set = async () => {
-    saveCount++;
-  };
+    // Wait for debounce delay
+    await wait(1100);
 
-  // Multiple rapid speed updates
-  await config.save({ lastSpeed: 1.5 });
-  await config.save({ lastSpeed: 1.8 });
-  await config.save({ lastSpeed: 2.0 });
+    // Should have saved only once
+    expect(saveCount).toBe(1);
 
-  // Should not have saved yet
-  assert.equal(saveCount, 0);
-  assert.equal(config.settings.lastSpeed, 2.0); // In-memory should update immediately
+    window.VSC.StorageManager.set = originalSet;
+  });
 
-  // Wait for debounce delay
-  await wait(1100);
+  it('VideoSpeedConfig should save non-speed settings immediately', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
 
-  // Should have saved only once
-  assert.equal(saveCount, 1);
+    let saveCount = 0;
+    const originalSet = window.VSC.StorageManager.set;
 
-  window.VSC.StorageManager.set = originalSet;
-});
+    window.VSC.StorageManager.set = async () => {
+      saveCount++;
+    };
 
-runner.test('VideoSpeedConfig should save non-speed settings immediately', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
-  await config.load();
+    await config.save({ enabled: false });
 
-  let saveCount = 0;
-  const originalSet = window.VSC.StorageManager.set;
+    // Should save immediately
+    expect(saveCount).toBe(1);
 
-  window.VSC.StorageManager.set = async () => {
-    saveCount++;
-  };
+    window.VSC.StorageManager.set = originalSet;
+  });
 
-  await config.save({ enabled: false });
+  it('VideoSpeedConfig should reset debounce timer on new speed updates', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
 
-  // Should save immediately
-  assert.equal(saveCount, 1);
+    let saveCount = 0;
+    const originalSet = window.VSC.StorageManager.set;
 
-  window.VSC.StorageManager.set = originalSet;
-});
+    window.VSC.StorageManager.set = async () => {
+      saveCount++;
+    };
 
-runner.test('VideoSpeedConfig should reset debounce timer on new speed updates', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
-  await config.load();
+    // First speed update
+    await config.save({ lastSpeed: 1.5 });
 
-  let saveCount = 0;
-  const originalSet = window.VSC.StorageManager.set;
+    // Wait 500ms, then another update (should reset timer)
+    await wait(500);
+    await config.save({ lastSpeed: 2.0 });
 
-  window.VSC.StorageManager.set = async () => {
-    saveCount++;
-  };
+    // Wait another 500ms (total 1000ms from first, but only 500ms from second)
+    await wait(500);
+    expect(saveCount).toBe(0); // Should not have saved yet
 
-  // First speed update
-  await config.save({ lastSpeed: 1.5 });
+    // Wait remaining 600ms (total 1100ms from second update)
+    await wait(600);
+    expect(saveCount).toBe(1); // Should have saved now
+    expect(config.settings.lastSpeed).toBe(2.0); // Final value
 
-  // Wait 500ms, then another update (should reset timer)
-  await wait(500);
-  await config.save({ lastSpeed: 2.0 });
+    window.VSC.StorageManager.set = originalSet;
+  });
 
-  // Wait another 500ms (total 1000ms from first, but only 500ms from second)
-  await wait(500);
-  assert.equal(saveCount, 0); // Should not have saved yet
+  it('VideoSpeedConfig should persist only final speed value', async () => {
+    const config = new window.VSC.VideoSpeedConfig();
+    await config.load();
 
-  // Wait remaining 600ms (total 1100ms from second update)
-  await wait(600);
-  assert.equal(saveCount, 1); // Should have saved now
-  assert.equal(config.settings.lastSpeed, 2.0); // Final value
+    let savedValue = null;
+    const originalSet = window.VSC.StorageManager.set;
 
-  window.VSC.StorageManager.set = originalSet;
-});
+    window.VSC.StorageManager.set = async (settings) => {
+      savedValue = settings.lastSpeed;
+    };
 
-runner.test('VideoSpeedConfig should persist only final speed value', async () => {
-  const config = new window.VSC.VideoSpeedConfig();
-  await config.load();
+    // Multiple rapid speed updates
+    await config.save({ lastSpeed: 1.2 });
+    await config.save({ lastSpeed: 1.7 });
+    await config.save({ lastSpeed: 2.3 });
 
-  let savedValue = null;
-  const originalSet = window.VSC.StorageManager.set;
+    // Wait for debounce
+    await wait(1100);
 
-  window.VSC.StorageManager.set = async (settings) => {
-    savedValue = settings.lastSpeed;
-  };
+    // Should have saved only the final value
+    expect(savedValue).toBe(2.3);
 
-  // Multiple rapid speed updates
-  await config.save({ lastSpeed: 1.2 });
-  await config.save({ lastSpeed: 1.7 });
-  await config.save({ lastSpeed: 2.3 });
+    window.VSC.StorageManager.set = originalSet;
+  });
 
-  // Wait for debounce
-  await wait(1100);
-
-  // Should have saved only the final value
-  assert.equal(savedValue, 2.3);
-
-  window.VSC.StorageManager.set = originalSet;
-});
-
-runner.test(
-  'VideoSpeedConfig should update in-memory settings immediately during debounce',
-  async () => {
+  it('VideoSpeedConfig should update in-memory settings immediately during debounce', async () => {
     const config = new window.VSC.VideoSpeedConfig();
     await config.load();
 
@@ -229,15 +204,13 @@ runner.test(
     await config.save({ lastSpeed: 1.75 });
 
     // In-memory should update immediately, before storage save
-    assert.equal(config.settings.lastSpeed, 1.75);
-    assert.equal(saveCount, 0); // Storage not saved yet
+    expect(config.settings.lastSpeed).toBe(1.75);
+    expect(saveCount).toBe(0); // Storage not saved yet
 
     // Wait for debounce
     await wait(1100);
-    assert.equal(saveCount, 1); // Now saved to storage
+    expect(saveCount).toBe(1); // Now saved to storage
 
     window.VSC.StorageManager.set = originalSet;
-  }
-);
-
-export { runner as settingsTestRunner };
+  });
+});

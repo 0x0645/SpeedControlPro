@@ -3,73 +3,21 @@
  * Testing the fix for video elements without parentElement
  */
 
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  installChromeMock,
-  cleanupChromeMock,
-  resetMockStorage,
-} from '../../helpers/chrome-mock.js';
-import {
-  SimpleTestRunner,
-  assert,
   createMockVideo,
   createMockDOM,
 } from '../../helpers/test-utils.js';
 import { loadInjectModules } from '../../helpers/module-loader.js';
-import { MESSAGE_TYPES } from '../../../src/utils/message-types.ts';
+import { MESSAGE_TYPES, BRIDGE_SOURCES, BRIDGE_ACTIONS } from '../../../src/utils/message-types.ts';
 
 // Load all required modules
 await loadInjectModules();
 
-const runner = new SimpleTestRunner();
 let mockDOM;
 let extension;
 let originalStateManager;
 let originalVideoSpeedConfig;
-
-runner.beforeEach(() => {
-  installChromeMock();
-  resetMockStorage();
-  mockDOM = createMockDOM();
-  originalStateManager = window.VSC.stateManager;
-  originalVideoSpeedConfig = window.VSC.videoSpeedConfig;
-
-  // Initialize site handler manager for tests
-  if (window.VSC && window.VSC.siteHandlerManager) {
-    window.VSC.siteHandlerManager.initialize(document);
-  }
-});
-
-runner.afterEach(() => {
-  cleanupChromeMock();
-  if (mockDOM) {
-    mockDOM.cleanup();
-  }
-  if (extension) {
-    extension = null;
-  }
-
-  window.VSC.stateManager = originalStateManager;
-  window.VSC.videoSpeedConfig = originalVideoSpeedConfig;
-
-  // Clean up any remaining video elements
-  const videos = document.querySelectorAll('video');
-  videos.forEach((video) => {
-    if (video.vsc) {
-      try {
-        video.vsc.remove();
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-    if (video.parentNode) {
-      try {
-        video.parentNode.removeChild(video);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-  });
-});
 
 /**
  * Create a video element without parentElement but with parentNode
@@ -102,100 +50,133 @@ function createVideoWithoutParentElement() {
   return { video, parentNode };
 }
 
-runner.test('onVideoFound should handle video elements without parentElement', async () => {
-  // Use the global VSC_controller instance
-  extension = window.VSC_controller;
+describe('VideoSpeedExtension', () => {
+  beforeEach(() => {
+    mockDOM = createMockDOM();
+    originalStateManager = window.VSC.stateManager;
+    originalVideoSpeedConfig = window.VSC.videoSpeedConfig;
 
-  // Ensure extension is initialized
-  if (!extension) {
-    assert.true(false, 'VSC_controller should be available on window');
-    return;
-  }
+    // Initialize site handler manager for tests
+    if (window.VSC && window.VSC.siteHandlerManager) {
+      window.VSC.siteHandlerManager.initialize(document);
+    }
+  });
 
-  try {
-    // Create a video element without parentElement but with parentNode
-    const { video, parentNode } = createVideoWithoutParentElement();
+  afterEach(() => {
+    if (mockDOM) {
+      mockDOM.cleanup();
+    }
+    if (extension) {
+      extension = null;
+    }
 
-    // Test the onVideoFound method directly - this is the core functionality
-    extension.onVideoFound(video, parentNode);
+    window.VSC.stateManager = originalStateManager;
+    window.VSC.videoSpeedConfig = originalVideoSpeedConfig;
 
-    // Verify that the video controller was attached
-    assert.exists(video.vsc, 'Video controller should be attached to the video element');
-    assert.true(typeof video.vsc.remove === 'function', 'Should create controller-like instance');
-
-    // Verify that the controller was initialized with the correct parent (parentNode fallback)
-    assert.equal(
-      video.vsc.parent,
-      parentNode,
-      'VideoController should use parentNode when parentElement is null'
-    );
-  } catch (error) {
-    console.error('Test error:', error);
-    assert.true(false, `Test should not throw error: ${error.message}`);
-  }
-});
-
-runner.test('onVideoFound should prefer parentElement when available', async () => {
-  // Use the global VSC_controller instance
-  extension = window.VSC_controller;
-
-  // Ensure extension is initialized
-  if (!extension) {
-    assert.true(false, 'VSC_controller should be available on window');
-    return;
-  }
-
-  try {
-    // Create a normal video element with both parentElement and parentNode
-    const video = createMockVideo();
-    const parentElement = document.createElement('div');
-    const parentNode = document.createElement('span'); // Different from parentElement
-
-    Object.defineProperty(video, 'parentElement', {
-      value: parentElement,
-      writable: false,
-      configurable: true,
+    // Clean up any remaining video elements
+    const videos = document.querySelectorAll('video');
+    videos.forEach((video) => {
+      if (video.vsc) {
+        try {
+          video.vsc.remove();
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      if (video.parentNode) {
+        try {
+          video.parentNode.removeChild(video);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
     });
+  });
 
-    Object.defineProperty(video, 'parentNode', {
-      value: parentNode,
-      writable: false,
-      configurable: true,
-    });
+  it('onVideoFound should handle video elements without parentElement', async () => {
+    // Use the global VSC_controller instance
+    extension = window.VSC_controller;
 
-    // Mock isConnected property for validity check
-    Object.defineProperty(video, 'isConnected', {
-      value: true,
-      writable: false,
-      configurable: true,
-    });
+    // Ensure extension is initialized
+    if (!extension) {
+      expect(false).toBe(true);
+      return;
+    }
 
-    // Test onVideoFound with parentElement available
-    extension.onVideoFound(video, parentNode);
+    try {
+      // Create a video element without parentElement but with parentNode
+      const { video, parentNode } = createVideoWithoutParentElement();
 
-    // Verify that the video controller was attached
-    assert.exists(video.vsc, 'Video controller should be attached to the video element');
+      // Test the onVideoFound method directly - this is the core functionality
+      extension.onVideoFound(video, parentNode);
 
-    // Verify that the controller was initialized with video.parentElement (not the passed parent)
-    // VideoController constructor uses target.parentElement || parent
-    assert.equal(
-      video.vsc.parent,
-      parentElement,
-      'VideoController should prefer video.parentElement when available'
-    );
-  } catch (error) {
-    assert.true(false, `Test should not throw error: ${error.message}`);
-  }
-});
+      // Verify that the video controller was attached
+      expect(video.vsc).toBeDefined();
+      expect(typeof video.vsc.remove === 'function').toBe(true);
 
-runner.test(
-  'onVideoFound should handle video with neither parentElement nor parentNode',
-  async () => {
+      // Verify that the controller was initialized with the correct parent (parentNode fallback)
+      expect(video.vsc.parent).toBe(parentNode);
+    } catch (error) {
+      console.error('Test error:', error);
+      expect(false).toBe(true);
+    }
+  });
+
+  it('onVideoFound should prefer parentElement when available', async () => {
+    // Use the global VSC_controller instance
+    extension = window.VSC_controller;
+
+    // Ensure extension is initialized
+    if (!extension) {
+      expect(false).toBe(true);
+      return;
+    }
+
+    try {
+      // Create a normal video element with both parentElement and parentNode
+      const video = createMockVideo();
+      const parentElement = document.createElement('div');
+      const parentNode = document.createElement('span'); // Different from parentElement
+
+      Object.defineProperty(video, 'parentElement', {
+        value: parentElement,
+        writable: false,
+        configurable: true,
+      });
+
+      Object.defineProperty(video, 'parentNode', {
+        value: parentNode,
+        writable: false,
+        configurable: true,
+      });
+
+      // Mock isConnected property for validity check
+      Object.defineProperty(video, 'isConnected', {
+        value: true,
+        writable: false,
+        configurable: true,
+      });
+
+      // Test onVideoFound with parentElement available
+      extension.onVideoFound(video, parentNode);
+
+      // Verify that the video controller was attached
+      expect(video.vsc).toBeDefined();
+
+      // Verify that the controller was initialized with video.parentElement (not the passed parent)
+      // VideoController constructor uses target.parentElement || parent
+      expect(video.vsc.parent).toBe(parentElement);
+    } catch (error) {
+      expect(false).toBe(true);
+    }
+  });
+
+  it('onVideoFound should handle video with neither parentElement nor parentNode', async () => {
     // Use the global VSC_controller instance
     extension = window.VSC_controller;
 
     // Verify extension is available
-    assert.exists(extension, 'VSC_controller should be available on window');
+    expect(extension).toBeDefined();
 
     try {
       // Create a video element with no parent references
@@ -225,24 +206,14 @@ runner.test(
       extension.onVideoFound(video, fallbackParent);
 
       // Verify basic functionality
-      assert.exists(
-        video.vsc,
-        'Video controller should be attached even without parent references'
-      );
-      assert.equal(
-        video.vsc.parent,
-        fallbackParent,
-        'VideoController should use provided fallback parent'
-      );
+      expect(video.vsc).toBeDefined();
+      expect(video.vsc.parent).toBe(fallbackParent);
     } catch (error) {
-      assert.true(false, `Test should not throw error: ${error.message}`);
+      expect(false).toBe(true);
     }
-  }
-);
+  });
 
-runner.test(
-  'handleRuntimeMessage should set speed for controlled and uncontrolled media',
-  async () => {
+  it('handleRuntimeMessage should set speed for controlled and uncontrolled media', async () => {
     const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
     const localExtension = new VideoSpeedExtension();
     const adjustedCalls = [];
@@ -268,69 +239,46 @@ runner.test(
       payload: { speed: 1.75 },
     });
 
-    assert.equal(adjustedCalls.length, 1, 'controlled media should use action handler');
-    assert.equal(
-      adjustedCalls[0].video,
-      controlledVideo,
-      'action handler should receive controlled video'
-    );
-    assert.equal(adjustedCalls[0].speed, 1.75, 'action handler should receive absolute speed');
-    assert.equal(uncontrolledVideo.playbackRate, 1.75, 'uncontrolled media should update directly');
-  }
-);
+    expect(adjustedCalls.length).toBe(1);
+    expect(adjustedCalls[0].video).toBe(controlledVideo);
+    expect(adjustedCalls[0].speed).toBe(1.75);
+    expect(uncontrolledVideo.playbackRate).toBe(1.75);
+  });
 
-runner.test('handleRuntimeMessage should post site info for popup requests', async () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-  const originalPostMessage = window.postMessage;
-  const postedMessages = [];
-  const video = createMockVideo();
+  it('handleRuntimeMessage should post site info for popup requests', async () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+    const originalPostMessage = window.postMessage;
+    const postedMessages = [];
+    const video = createMockVideo();
 
-  video.playbackRate = 1.5;
+    video.playbackRate = 1.5;
 
-  localExtension.getAllMediaElements = () => [video];
-  localExtension.config = {
-    settings: { lastSpeed: 1.25 },
-    getSiteProfile: () => ({ speed: 1.5 }),
-  };
-  window.postMessage = (payload) => {
-    postedMessages.push(payload);
-  };
+    localExtension.getAllMediaElements = () => [video];
+    localExtension.config = {
+      settings: { lastSpeed: 1.25 },
+      getSiteProfile: () => ({ speed: 1.5 }),
+    };
+    window.postMessage = (payload) => {
+      postedMessages.push(payload);
+    };
 
-  try {
-    localExtension.handleRuntimeMessage({
-      type: MESSAGE_TYPES.GET_SITE_INFO,
-    });
+    try {
+      localExtension.handleRuntimeMessage({
+        type: MESSAGE_TYPES.GET_SITE_INFO,
+      });
 
-    assert.equal(postedMessages.length, 1, 'site info should be posted once');
-    assert.equal(
-      postedMessages[0].source,
-      'vsc-page',
-      'site info should be posted from page bridge'
-    );
-    assert.equal(
-      postedMessages[0].action,
-      'current-speed-response',
-      'site info action should match bridge contract'
-    );
-    assert.equal(
-      postedMessages[0].data.speed,
-      1.5,
-      'site info should report actual playback rate from video'
-    );
-    assert.equal(
-      postedMessages[0].data.hasProfile,
-      true,
-      'site info should report existing profile'
-    );
-  } finally {
-    window.postMessage = originalPostMessage;
-  }
-});
+      expect(postedMessages.length).toBe(1);
+      expect(postedMessages[0].source).toBe('vsc-page');
+      expect(postedMessages[0].action).toBe('current-speed-response');
+      expect(postedMessages[0].data.speed).toBe(1.5);
+      expect(postedMessages[0].data.hasProfile).toBe(true);
+    } finally {
+      window.postMessage = originalPostMessage;
+    }
+  });
 
-runner.test(
-  'handleRuntimeMessage GET_SITE_INFO should use max playback rate for multi-video',
-  async () => {
+  it('handleRuntimeMessage GET_SITE_INFO should use max playback rate for multi-video', async () => {
     const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
     const localExtension = new VideoSpeedExtension();
     const originalPostMessage = window.postMessage;
@@ -355,105 +303,90 @@ runner.test(
         type: MESSAGE_TYPES.GET_SITE_INFO,
       });
 
-      assert.equal(postedMessages.length, 1, 'site info should be posted once');
-      assert.equal(
-        postedMessages[0].data.speed,
-        2.0,
-        'site info should use max playback rate among media'
-      );
+      expect(postedMessages.length).toBe(1);
+      expect(postedMessages[0].data.speed).toBe(2.0);
     } finally {
       window.postMessage = originalPostMessage;
     }
-  }
-);
+  });
 
-runner.test('attachControllersToMedia should skip duplicate and pending media attachments', () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-  const attached = [];
-  const freshVideo = createMockVideo();
-  const existingVideo = createMockVideo();
-  const pendingVideo = createMockVideo();
+  it('attachControllersToMedia should skip duplicate and pending media attachments', () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+    const attached = [];
+    const freshVideo = createMockVideo();
+    const existingVideo = createMockVideo();
+    const pendingVideo = createMockVideo();
 
-  existingVideo.vsc = { div: document.createElement('div') };
-  window.VSC.stateManager = {
-    hasMediaElement: (video) => video === existingVideo,
-  };
-  localExtension.onVideoFound = (video) => {
-    attached.push(video);
-    video.vsc = { div: document.createElement('div') };
-  };
-  localExtension.markControllerPending(pendingVideo);
+    existingVideo.vsc = { div: document.createElement('div') };
+    window.VSC.stateManager = {
+      hasMediaElement: (video) => video === existingVideo,
+    };
+    localExtension.onVideoFound = (video) => {
+      attached.push(video);
+      video.vsc = { div: document.createElement('div') };
+    };
+    localExtension.markControllerPending(pendingVideo);
 
-  const attachedCount = localExtension.attachControllersToMedia([
-    freshVideo,
-    existingVideo,
-    pendingVideo,
-  ]);
+    const attachedCount = localExtension.attachControllersToMedia([
+      freshVideo,
+      existingVideo,
+      pendingVideo,
+    ]);
 
-  assert.equal(attachedCount, 1, 'only unattached media should be processed');
-  assert.equal(attached.length, 1, 'onVideoFound should only run once');
-  assert.equal(attached[0], freshVideo, 'fresh media should be attached');
+    expect(attachedCount).toBe(1);
+    expect(attached.length).toBe(1);
+    expect(attached[0]).toBe(freshVideo);
+  });
+
+  it('shouldRunComprehensiveScan should only allow one scan per document', () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+
+    expect(localExtension.shouldRunComprehensiveScan(document)).toBe(true);
+    expect(localExtension.shouldRunComprehensiveScan(document)).toBe(false);
+  });
+
+  it('registerMessageHandler should ignore duplicate registration', () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+
+    // Call registerMessageHandler twice
+    localExtension.registerMessageHandler();
+    localExtension.registerMessageHandler();
+
+    // The flag should prevent a second listener from being attached
+    expect(localExtension.messageHandlerRegistered).toBe(true);
+  });
+
+  it('initializeDocument should initialize each document once', () => {
+    const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
+    const localExtension = new VideoSpeedExtension();
+    const iframeDocument = document.implementation.createHTMLDocument('iframe-doc');
+    const listenerDocs = [];
+    const deferredDocs = [];
+    const cssDocs = [];
+
+    localExtension.eventManager = {
+      setupEventListeners: (doc) => {
+        listenerDocs.push(doc);
+      },
+    };
+    localExtension.deferExpensiveOperations = (doc) => {
+      deferredDocs.push(doc);
+    };
+    localExtension.setupDocumentCSS = (doc) => {
+      cssDocs.push(doc);
+    };
+
+    localExtension.initializeDocument(document);
+    localExtension.initializeDocument(document);
+    localExtension.initializeDocument(iframeDocument);
+    localExtension.initializeDocument(iframeDocument);
+
+    expect(listenerDocs.length).toBe(2);
+    expect(deferredDocs.length).toBe(2);
+    expect(cssDocs.length).toBe(1);
+    expect(cssDocs[0]).toBe(iframeDocument);
+  });
 });
-
-runner.test('shouldRunComprehensiveScan should only allow one scan per document', () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-
-  assert.equal(localExtension.shouldRunComprehensiveScan(document), true);
-  assert.equal(localExtension.shouldRunComprehensiveScan(document), false);
-});
-
-runner.test('registerMessageHandler should ignore duplicate registration', () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-  const handled = [];
-
-  localExtension.handleRuntimeMessage = (message) => {
-    handled.push(message);
-  };
-
-  localExtension.registerMessageHandler();
-  localExtension.registerMessageHandler();
-
-  window.dispatchEvent(
-    new CustomEvent('VSC_MESSAGE', {
-      detail: { type: MESSAGE_TYPES.RESET_SPEED },
-    })
-  );
-
-  assert.equal(handled.length, 1, 'runtime message handler should only be registered once');
-});
-
-runner.test('initializeDocument should initialize each document once', () => {
-  const VideoSpeedExtension = window.VSC.VideoSpeedExtension;
-  const localExtension = new VideoSpeedExtension();
-  const iframeDocument = document.implementation.createHTMLDocument('iframe-doc');
-  const listenerDocs = [];
-  const deferredDocs = [];
-  const cssDocs = [];
-
-  localExtension.eventManager = {
-    setupEventListeners: (doc) => {
-      listenerDocs.push(doc);
-    },
-  };
-  localExtension.deferExpensiveOperations = (doc) => {
-    deferredDocs.push(doc);
-  };
-  localExtension.setupDocumentCSS = (doc) => {
-    cssDocs.push(doc);
-  };
-
-  localExtension.initializeDocument(document);
-  localExtension.initializeDocument(document);
-  localExtension.initializeDocument(iframeDocument);
-  localExtension.initializeDocument(iframeDocument);
-
-  assert.equal(listenerDocs.length, 2, 'each document should attach listeners once');
-  assert.equal(deferredDocs.length, 2, 'each document should schedule deferred work once');
-  assert.equal(cssDocs.length, 1, 'only non-window documents should inject CSS');
-  assert.equal(cssDocs[0], iframeDocument, 'iframe document should receive CSS injection');
-});
-
-export { runner as injectTestRunner };
