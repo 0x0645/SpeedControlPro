@@ -165,7 +165,7 @@ chrome.tabs.onRemoved.addListener((tabId: number) => {
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Video Speed Controller installed/updated');
+  console.log('SpeedControl Pro installed/updated');
   await migrateConfig();
   await initializeIcon();
   // Clean up legacy tabSpeeds from sync storage
@@ -173,10 +173,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  console.log('Video Speed Controller started');
+  console.log('SpeedControl Pro started');
   await initializeIcon();
 });
 
 void initializeIcon();
 
-console.log('Video Speed Controller background script loaded');
+console.log('SpeedControl Pro background script loaded');

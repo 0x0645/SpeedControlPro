@@ -203,7 +203,7 @@ class VideoSpeedExtension {
 
   async initialize(): Promise<void> {
     try {
-      logger.info('Video Speed Controller starting...');
+      logger.info('SpeedControl Pro starting...');
       await this.loadConfig();
       this.initializeServices();
 
@@ -211,11 +211,11 @@ class VideoSpeedExtension {
         this.initializeDocument(doc);
       });
 
-      logger.info('Video Speed Controller initialized successfully');
+      logger.info('SpeedControl Pro initialized successfully');
       this.initialized = true;
     } catch (error) {
       const err = error as Error;
-      console.error(`Failed to initialize Video Speed Controller: ${err.message}`);
+      console.error(`Failed to initialize SpeedControl Pro: ${err.message}`);
       console.error('Full error details:', error);
       console.error('Error stack:', err.stack);
     }

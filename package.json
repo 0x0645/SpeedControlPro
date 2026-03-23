@@ -1,7 +1,7 @@
 {
-  "name": "video-speed-controller",
-  "version": "0.8.0",
-  "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
+  "name": "speedcontrol-pro",
+  "version": "1.0.0",
+  "description": "Precise playback speed control for HTML5 video and audio — per-site profiles, keyboard shortcuts, and a refined interface",
   "type": "module",
   "packageManager": "pnpm@9.11.0",
   "scripts": {
