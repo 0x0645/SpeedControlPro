@@ -84,4 +84,4 @@ This project is a fork of [Video Speed Controller](https://github.com/igrigorik/
 
 ## License
 
-MIT License — Copyright (c) 2014 Ilya Grigorik, 2025 Mustafa Gomaa
+MIT License — Copyright (c) 2014 Ilya Grigorik, 2026 Mustafa Gomaa
