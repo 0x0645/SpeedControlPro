@@ -102,10 +102,21 @@ export async function sendRuntimeMessage(message: object): Promise<void> {
       resolve();
     };
 
+    const handleError = (runtimeError: string) => {
+      if (
+        runtimeError.includes('Receiving end does not exist') ||
+        runtimeError.includes('message port closed')
+      ) {
+        finish();
+        return;
+      }
+      reject(new Error(runtimeError));
+    };
+
     const result = sendMethod.call(runtimeApi, message, () => {
       const runtimeError = getRuntimeErrorMessage();
       if (runtimeError) {
-        reject(new Error(runtimeError));
+        handleError(runtimeError);
         return;
       }
 
@@ -113,7 +124,19 @@ export async function sendRuntimeMessage(message: object): Promise<void> {
     });
 
     if (isPromiseLike<void>(result)) {
-      void result.then(finish).catch(reject);
+      void result
+        .then(finish)
+        .catch((error) => {
+          const messageText = error instanceof Error ? error.message : String(error);
+          if (
+            messageText.includes('Receiving end does not exist') ||
+            messageText.includes('message port closed')
+          ) {
+            finish();
+            return;
+          }
+          reject(error instanceof Error ? error : new Error(messageText));
+        });
     }
   });
 }

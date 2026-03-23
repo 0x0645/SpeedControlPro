@@ -49,8 +49,8 @@ export class VideoController {
       logger.error('StateManager not available during VideoController initialization');
     }
 
-    this.initializeSpeed();
     this.div = this.initializeControls();
+    this.initializeSpeed();
     this.setupEventHandlers();
     this.setupMutationObserver();
 

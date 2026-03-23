@@ -136,9 +136,14 @@ chrome.storage.onChanged.addListener((changes: StorageChangeMap, namespace: stri
 });
 
 chrome.runtime.onMessage.addListener(
-  (message: BackgroundMessage, sender: { tab?: { id?: number } }) => {
+  (
+    message: BackgroundMessage,
+    sender: { tab?: { id?: number } },
+    sendResponse: () => void
+  ) => {
     if (message.type === EXTENSION_MESSAGES.TOGGLE) {
       void updateIcon(message.enabled !== false);
+      sendResponse();
       return;
     }
 
@@ -146,9 +151,12 @@ chrome.runtime.onMessage.addListener(
       const tabId = sender.tab.id;
       const lastSpeed = message.lastSpeed;
       if (typeof lastSpeed === 'number' && Number.isFinite(lastSpeed)) {
-        void updateTabSpeed(tabId, lastSpeed);
+        void updateTabSpeed(tabId, lastSpeed).then(() => sendResponse());
+        return true;
       }
     }
+
+    sendResponse();
   }
 );
 

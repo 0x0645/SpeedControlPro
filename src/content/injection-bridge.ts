@@ -128,10 +128,14 @@ export function setupMessageBridge(): void {
         if (action === BRIDGE_ACTIONS.STORAGE_UPDATE) {
           const update = data as StorageSnapshot;
           if (typeof update.lastSpeed === 'number' && Number.isFinite(update.lastSpeed)) {
-            await sendRuntimeMessage({
-              type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
-              lastSpeed: update.lastSpeed,
-            });
+            try {
+              await sendRuntimeMessage({
+                type: EXTENSION_MESSAGES.TAB_SPEED_UPDATE,
+                lastSpeed: update.lastSpeed,
+              });
+            } catch (err) {
+              console.warn('[VSC Bridge] TAB_SPEED_UPDATE failed:', err);
+            }
           }
           await setInChromeStorage(update);
         } else if (action === BRIDGE_ACTIONS.RUNTIME_MESSAGE && isRuntimeMessage(data)) {

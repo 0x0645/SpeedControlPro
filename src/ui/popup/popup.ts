@@ -279,13 +279,16 @@ document.addEventListener('DOMContentLoaded', () => {
       type: MESSAGE_TYPES.GET_SITE_INFO,
     });
 
-    const resolvedSpeed =
-      typeof response?.speed === 'number' && Number.isFinite(response.speed)
-        ? response.speed
-        : (fallbackSpeed ?? null);
-
-    if (resolvedSpeed !== null) {
-      updateSpeedUI(resolvedSpeed);
+    if (typeof response?.speed === 'number' && Number.isFinite(response.speed)) {
+      // If the content script reports 1.0 (the default) but we already show a
+      // different speed (e.g. from a site profile), the profile likely hasn't
+      // been applied to the video yet — keep the current display.
+      if (Math.abs(response.speed - 1.0) < 0.01 && Math.abs(currentSpeed - 1.0) >= 0.01) {
+        return;
+      }
+      updateSpeedUI(response.speed);
+    } else if (fallbackSpeed !== undefined) {
+      updateSpeedUI(fallbackSpeed);
     }
   }
 
@@ -353,20 +356,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const tabId = activeTab?.id;
-    const fallbackSpeed = storage.lastSpeed ?? 1.0;
+
+    // Profile speed takes priority over global lastSpeed
+    const profiles = storage.siteProfiles || {};
+    const siteProfile = hostname ? profiles[hostname] : undefined;
+    const profileSpeed =
+      siteProfile && typeof siteProfile.speed === 'number' ? siteProfile.speed : undefined;
+    const fallbackSpeed = profileSpeed ?? storage.lastSpeed ?? 1.0;
 
     if (!tabId) {
       updateSpeedUI(fallbackSpeed);
       return;
     }
 
+    // Show the best known speed immediately (profile > session > global)
     const session = await getSessionStorage<{ tabSpeeds?: Record<string, number> }>({
       tabSpeeds: {},
     });
     const sessionSpeed = (session.tabSpeeds || {})[String(tabId)];
-    updateSpeedUI(typeof sessionSpeed === 'number' ? sessionSpeed : fallbackSpeed);
+    updateSpeedUI(
+      profileSpeed ?? (typeof sessionSpeed === 'number' ? sessionSpeed : undefined) ?? fallbackSpeed
+    );
 
+    // Query the content script for the actual video playbackRate.
+    // This corrects the display once the real speed is known.
     await refreshSpeedFromTab(tabId, fallbackSpeed);
+
+    // The content script may not have applied the profile speed yet when the
+    // popup opens (race condition), so schedule additional refreshes to catch
+    // late speed application.
+    scheduleSpeedRefresh(tabId, fallbackSpeed, 300);
+    scheduleSpeedRefresh(tabId, fallbackSpeed, 600);
   }
 
   function initializeSpeedControls(): void {
@@ -452,7 +472,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     byId<HTMLElement>('site-hostname').textContent = activeHostname;
     const storage = await getSyncStorage({ siteProfiles: {} });
-    setActiveSiteProfile((storage.siteProfiles || {})[activeHostname]);
+    const profile = (storage.siteProfiles || {})[activeHostname];
+    setActiveSiteProfile(profile);
+
+    // If the profile has a saved speed, ensure the speed display reflects it.
+    // This acts as a reliable backup — initializeSiteProfile always finds the
+    // profile correctly, so use it to correct the speed display if needed.
+    if (profile?.speed !== undefined && typeof profile.speed === 'number') {
+      updateSpeedUI(profile.speed);
+    }
 
     byId<HTMLButtonElement>('site-speed-toggle').addEventListener('click', () => {
       void getSyncStorage({ siteProfiles: {} })
