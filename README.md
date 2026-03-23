@@ -1,5 +1,7 @@
 # SpeedControl Pro
 
+[**Install from Chrome Web Store**](https://chromewebstore.google.com/detail/dggicpgmhomnaacljcidmffhbahiplni)
+
 Precise playback speed control for every HTML5 video and audio element. Per-site profiles, customizable keyboard shortcuts, and a refined popup interface.
 
 > **Fork of [Video Speed Controller](https://github.com/igrigorik/videospeed)** by Ilya Grigorik. This project builds on the original with a rewritten UI, improved reliability, and new features like site profiles and session-aware speed sync.
