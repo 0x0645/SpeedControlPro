@@ -4,8 +4,10 @@
 .agent
 .idea
 .AGENT.md
+.impeccable.md
 CLAUDE*.md
 local
 dist
 tests/e2e/screenshots
 node_modules
+coverage/

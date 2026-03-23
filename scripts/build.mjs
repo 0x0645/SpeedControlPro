@@ -3,47 +3,74 @@ import process from 'process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
+import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const execFileAsync = promisify(execFile);
 
 const isWatch = process.argv.includes('--watch');
+const rootDir = path.resolve(__dirname, '..');
+const outDir = path.resolve(rootDir, 'dist');
+
+const entryPoints = {
+  content: 'src/entries/content-entry.ts',
+  inject: 'src/entries/inject-entry.ts',
+  background: 'src/background.ts',
+  'ui/popup/popup': 'src/ui/popup/popup.ts',
+  'ui/options/options': 'src/ui/options/options.ts',
+};
+
+const staticCopyTargets = [
+  { from: 'manifest.json', to: 'manifest.json' },
+  { from: 'src/assets', to: 'assets' },
+  {
+    from: 'src/ui',
+    to: 'ui',
+    filter: (sourcePath) => {
+      const basename = path.basename(sourcePath);
+      return !basename.endsWith('.js') && !basename.endsWith('.ts');
+    },
+  },
+  { from: 'src/styles', to: 'styles' },
+  { from: 'LICENSE', to: 'LICENSE' },
+  { from: 'CONTRIBUTING.md', to: 'CONTRIBUTING.md' },
+  { from: 'PRIVACY.md', to: 'PRIVACY.md' },
+  { from: 'README.md', to: 'README.md' },
+];
 
 const common = {
   bundle: true,
-  sourcemap: false,  // set true locally if debugging
-  minify: false,
+  sourcemap: isWatch ? 'inline' : false,
+  minify: !isWatch,
   target: 'chrome114',
   platform: 'browser',
   legalComments: 'none',
-  format: 'iife', // preserve side-effects and simple global init without ESM runtime
-  define: { 'process.env.NODE_ENV': '"production"' },
+  format: 'iife',
+  define: { 'process.env.NODE_ENV': JSON.stringify(isWatch ? 'development' : 'production') },
 };
 
+const tailwindInputs = [
+  {
+    input: path.join(rootDir, 'src/ui/popup/popup.css'),
+    output: path.join(outDir, 'ui/popup/popup.css'),
+  },
+  {
+    input: path.join(rootDir, 'src/ui/options/options.css'),
+    output: path.join(outDir, 'ui/options/options.css'),
+  },
+];
+
+async function resetOutputDirectory() {
+  await fs.emptyDir(outDir);
+}
+
 async function copyStaticFiles() {
-  const rootDir = path.resolve(__dirname, '..');
-  const outDir = path.resolve(rootDir, 'dist');
-
   try {
-    // Ensure the output directory exists and is clean
-    await fs.emptyDir(outDir);
-
-    // Paths to copy
-    const pathsToCopy = {
-      'manifest.json': path.join(outDir, 'manifest.json'),
-      'src/assets': path.join(outDir, 'assets'),
-      'src/ui': path.join(outDir, 'ui'),
-      'src/styles': path.join(outDir, 'styles'),
-      'LICENSE': path.join(outDir, 'LICENSE'),
-      'CONTRIBUTING.md': path.join(outDir, 'CONTRIBUTING.md'),
-      'PRIVACY.md': path.join(outDir, 'PRIVACY.md'),
-      'README.md': path.join(outDir, 'README.md')
-    };
-
-    // Perform copy operations
-    for (const [src, dest] of Object.entries(pathsToCopy)) {
-      await fs.copy(path.join(rootDir, src), dest, {
-        filter: (src) => !path.basename(src).endsWith('.js')
+    for (const target of staticCopyTargets) {
+      await fs.copy(path.join(rootDir, target.from), path.join(outDir, target.to), {
+        filter: target.filter,
       });
     }
 
@@ -54,23 +81,52 @@ async function copyStaticFiles() {
   }
 }
 
+async function buildTailwindStyles() {
+  try {
+    await Promise.all(
+      tailwindInputs.map(({ input, output }) =>
+        execFileAsync('pnpm', ['exec', 'tailwindcss', '-i', input, '-o', output, '--minify'], {
+          cwd: rootDir,
+        })
+      )
+    );
+
+    console.log('✅ Tailwind UI styles built');
+  } catch (error) {
+    console.error('❌ Tailwind build failed:', error);
+    process.exit(1);
+  }
+}
+
+function watchTailwindStyles() {
+  tailwindInputs.forEach(({ input, output }) => {
+    const watcher = spawn('pnpm', ['exec', 'tailwindcss', '-i', input, '-o', output, '--watch'], {
+      cwd: rootDir,
+      stdio: 'inherit',
+    });
+
+    watcher.on('exit', (code) => {
+      if (code !== 0) {
+        console.error(`❌ Tailwind watcher exited with code ${code} for ${path.basename(input)}`);
+      }
+    });
+  });
+}
+
 async function build() {
   try {
+    await resetOutputDirectory();
     await copyStaticFiles();
+    await buildTailwindStyles();
 
     const esbuildConfig = {
       ...common,
-      entryPoints: {
-        'content': 'src/entries/content-entry.js',
-        'inject': 'src/entries/inject-entry.js',
-        'background': 'src/background.js',
-        'ui/popup/popup': 'src/ui/popup/popup.js',
-        'ui/options/options': 'src/ui/options/options.js'
-      },
-      outdir: 'dist',
+      entryPoints,
+      outdir: outDir,
     };
 
     if (isWatch) {
+      watchTailwindStyles();
       const ctx = await esbuild.context(esbuildConfig);
       await ctx.watch();
       console.log('🔧 Watching for changes...');

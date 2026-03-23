@@ -1,11 +1,11 @@
 {
-  "name": "Video Speed Controller",
-  "short_name": "videospeed",
-  "version": "0.9.5",
+  "name": "SpeedControl Pro",
+  "short_name": "SpeedControl",
+  "version": "1.0.0",
   "manifest_version": 3,
   "minimum_chrome_version": "89",
-  "description": "Speed up, slow down, advance and rewind HTML5 audio/video with shortcuts",
-  "homepage_url": "https://github.com/igrigorik/videospeed",
+  "description": "Precise playback speed control for HTML5 video and audio — per-site profiles, keyboard shortcuts, and a refined interface",
+  "homepage_url": "https://github.com/0x0645/SpeedControlPro",
   "icons": {
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
@@ -13,7 +13,8 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "background": {
     "service_worker": "background.js"

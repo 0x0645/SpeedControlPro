@@ -1,0 +1,153 @@
+import { describe, it, expect } from 'vitest';
+import { readFile } from 'fs/promises';
+import { JSDOM } from 'jsdom';
+import { wait } from '../../helpers/test-utils';
+
+function installPopupChromeMock() {
+  const calls: {
+    syncSet: Array<Record<string, unknown>>;
+    sentMessages: unknown[];
+    runtimeMessages: unknown[];
+    openOptions: number;
+  } = {
+    syncSet: [],
+    sentMessages: [],
+    runtimeMessages: [],
+    openOptions: 0,
+  };
+
+  let currentSpeed = 1.6;
+  let siteProfiles: Record<string, { speed?: number }> = {};
+
+  (globalThis as typeof globalThis & { chrome?: unknown }).chrome = {
+    storage: {
+      sync: {
+        get: (defaults: Record<string, unknown>, callback: (data: Record<string, unknown>) => void) => {
+          const data = {
+            enabled: true,
+            lastSpeed: 1.25,
+            keyBindings: [
+              { action: 'slower', key: 83, value: 0.1, predefined: true },
+              { action: 'faster', key: 68, value: 0.1, predefined: true },
+              { action: 'fast', key: 71, value: 1.8, predefined: true },
+            ],
+            siteProfiles,
+            ...defaults,
+          };
+          callback(data);
+        },
+        set: (payload: Record<string, unknown>, callback?: () => void) => {
+          calls.syncSet.push(payload);
+          if (payload.siteProfiles) {
+            siteProfiles = payload.siteProfiles as Record<string, { speed?: number }>;
+          }
+          callback?.();
+        },
+      },
+      session: {
+        get: (_defaults: unknown, callback: (data: Record<string, unknown>) => void) =>
+          callback({ tabSpeeds: { 1: 1.4 } }),
+      },
+    },
+    tabs: {
+      query: (_queryInfo: unknown, callback: (tabs: Array<{ id: number; url: string }>) => void) =>
+        callback([{ id: 1, url: 'https://example.com/video' }]),
+      sendMessage: (
+        _tabId: number,
+        message: { type?: string; payload?: { delta?: number; speed?: number } },
+        callback?: (resp?: unknown) => void
+      ) => {
+        calls.sentMessages.push(message);
+
+        if (message.type === 'VSC_ADJUST_SPEED') {
+          currentSpeed = Number((currentSpeed + (message.payload?.delta ?? 0)).toFixed(2));
+          callback?.();
+          return;
+        }
+
+        if (message.type === 'VSC_SET_SPEED') {
+          currentSpeed = message.payload?.speed ?? currentSpeed;
+          callback?.();
+          return;
+        }
+
+        if (message.type === 'VSC_GET_SITE_INFO') {
+          callback?.({
+            speed: currentSpeed,
+            hostname: 'example.com',
+            hasProfile: !!siteProfiles['example.com'],
+            profile: siteProfiles['example.com'] ?? null,
+          });
+          return;
+        }
+
+        callback?.();
+      },
+    },
+    runtime: {
+      lastError: null,
+      sendMessage: (message: unknown, callback?: () => void) => {
+        calls.runtimeMessages.push(message);
+        callback?.();
+      },
+      openOptionsPage: (callback?: () => void) => {
+        calls.openOptions += 1;
+        callback?.();
+      },
+      getURL: (path: string) => path,
+    },
+    action: {
+      setIcon: () => Promise.resolve(),
+    },
+  };
+
+  return { calls };
+}
+
+describe('Popup Module', () => {
+  it('popup module updates speed display and saves current site speed', async () => {
+    const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+      url: 'https://extension.test/popup.html',
+      pretendToBeVisual: true,
+    });
+
+    Object.assign(globalThis, {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      Element: dom.window.Element,
+      Node: dom.window.Node,
+      Event: dom.window.Event,
+      CustomEvent: dom.window.CustomEvent,
+      KeyboardEvent: dom.window.KeyboardEvent,
+      MutationObserver: dom.window.MutationObserver,
+      customElements: dom.window.customElements,
+    });
+
+    const html = await readFile('./src/ui/popup/popup.html', 'utf8');
+    document.documentElement.innerHTML = html;
+    const { calls } = installPopupChromeMock();
+
+    await import('../../../src/ui/popup/popup');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    await wait(20);
+    const speedDisplay = document.getElementById('speed-display');
+    expect(speedDisplay?.textContent?.trim()).toBe('1.60');
+
+    document.getElementById('speed-increase')?.click();
+    await wait(180);
+    expect(document.getElementById('speed-display')?.textContent?.trim()).toBe('1.70');
+
+    document.getElementById('site-speed-toggle')?.click();
+    await wait(30);
+
+    const lastSyncSet = calls.syncSet[calls.syncSet.length - 1] as {
+      siteProfiles?: Record<string, { speed?: number }>;
+    };
+    expect(lastSyncSet?.siteProfiles?.['example.com']?.speed).toBe(1.7);
+    expect(
+      calls.sentMessages.some((m) => (m as { type?: string }).type === 'VSC_ADJUST_SPEED')
+    ).toBe(true);
+  });
+});

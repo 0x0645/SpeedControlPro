@@ -1,167 +1,204 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpeedControl Pro: Settings</title>
+    <link rel="stylesheet" href="options.css" />
+    <script src="options.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero-header surface-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Extension settings</p>
+          <h1>SpeedControl Pro</h1>
+          <p class="hero-text">
+            Set reliable playback defaults once, then let specific sites follow their own rules only
+            when they need to.
+          </p>
+        </div>
+      </header>
 
-<head>
-  <title>Video Speed Controller: Options</title>
-  <link rel="stylesheet" href="options.css" />
-  <script src="options.js"></script>
-</head>
+      <section id="site-profiles-section" class="surface-card settings-section feature-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Main feature</p>
+            <h2>Website profiles</h2>
+          </div>
+        </div>
+        <p class="section-description">
+          Save a speed for a domain, then add deeper overrides only if that site needs its own
+          controller or shortcuts.
+        </p>
+        <div id="site-profile-list"></div>
+        <div class="row site-profile-add">
+          <input
+            id="site-profile-hostname"
+            type="text"
+            placeholder="youtube.com"
+          />
+          <button id="site-profile-add-btn">Create profile</button>
+        </div>
+      </section>
 
-<body>
-  <header>
-    <h1>Video Speed Controller</h1>
-  </header>
+      <section class="surface-card settings-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Behavior</p>
+            <h2>Global defaults</h2>
+          </div>
+        </div>
+        <p class="section-description">
+          These settings apply to every site unless a website profile overrides them.
+        </p>
 
-  <section id="customs">
-    <h3>Shortcuts</h3>
-    <div class="row customs" id="display">
-      <select class="customDo">
-        <option value="display">Show/hide controller</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0.10)" style="display: none;" />
-    </div>
-    <div class="row customs" id="slower">
-      <select class="customDo">
-        <option value="slower">Decrease speed</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0.10)" />
-    </div>
-    <div class="row customs" id="faster">
-      <select class="customDo">
-        <option value="faster">Increase speed</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0.10)" />
-    </div>
-    <div class="row customs" id="rewind">
-      <select class="customDo">
-        <option value="rewind">Rewind</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (10)" />
-    </div>
-    <div class="row customs" id="advance">
-      <select class="customDo">
-        <option value="advance">Advance</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (10)" />
-    </div>
-    <div class="row customs" id="reset">
-      <select class="customDo">
-        <option value="reset">Reset speed</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (1.00)" />
-    </div>
-    <div class="row customs" id="fast">
-      <select class="customDo">
-        <option value="fast">Preferred speed</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (1.80)" />
-    </div>
-    <div class="row customs" id="mark">
-      <select class="customDo">
-        <option value="mark">Set marker</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
-    </div>
-    <div class="row customs" id="jump">
-      <select class="customDo">
-        <option value="jump">Jump to marker</option>
-      </select>
-      <input class="customKey" type="text" value="" placeholder="press a key" />
-      <input class="customValue" type="text" placeholder="value (0)" style="display: none;" />
-    </div>
+        <div class="row toggle-row">
+          <label for="audioBoolean">Audio support
+            <em>Keep audio playing when speed exceeds the browser's native limit.</em></label
+          ><input id="audioBoolean" type="checkbox" />
+        </div>
+        <div class="row toggle-row">
+          <label for="rememberSpeed">Remember playback speed
+            <em>Restore your last used speed when you open a new video.</em></label
+          ><input id="rememberSpeed" type="checkbox" />
+        </div>
+        <div class="row toggle-row">
+          <label for="startHidden">Hide controller by default
+            <em>The on-screen speed overlay won't appear until you toggle it.</em></label
+          ><input id="startHidden" type="checkbox" />
+        </div>
+        <div class="row toggle-row">
+          <label for="forceLastSavedSpeed"
+            >Force last saved speed
+            <em>Prevent sites from overriding your preferred speed.</em></label
+          ><input id="forceLastSavedSpeed" type="checkbox" />
+        </div>
+        <div class="row advanced-feature">
+          <label for="controllerOpacity">Controller opacity</label
+          ><input id="controllerOpacity" type="text" value="" />
+        </div>
+        <div class="row advanced-feature">
+          <label for="controllerButtonSize">Controller button size</label
+          ><input id="controllerButtonSize" type="text" value="" />
+        </div>
+        <div class="row advanced-feature">
+          <label for="logLevel">Console log level <em>Browser console verbosity.</em></label
+          ><select id="logLevel">
+            <option value="1">None</option>
+            <option value="2">Error</option>
+            <option value="3">Warning</option>
+            <option value="4">Info</option>
+            <option value="5">Debug</option>
+            <option value="6">Verbose</option>
+          </select>
+        </div>
+        <div class="row advanced-feature blacklist-row">
+          <label for="blacklist"
+            >Disabled sites
+            <em
+              >One host or <a href="https://www.regexpal.com/">regex</a> per line, for example
+              <code>/(.+)youtube\.com(\/*)$/gi</code></em
+            ></label
+          ><textarea id="blacklist" rows="8" cols="50"></textarea>
+        </div>
+      </section>
 
-    <button id="add">Add New</button>
-  </section>
+      <section id="customs" class="surface-card settings-section">
+        <div class="section-heading">
+          <p class="section-kicker">Keyboard</p>
+          <h2>Shortcuts</h2>
+        </div>
+        <p class="section-description">
+          Keep the defaults or define a tighter command layout around how you actually watch and
+          listen.
+        </p>
+        <div class="row customs" id="display">
+          <select class="customDo">
+            <option value="display">Show/hide controller</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (0.10)" style="display: none" />
+        </div>
+        <div class="row customs" id="slower">
+          <select class="customDo">
+            <option value="slower">Decrease speed</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (0.10)" />
+        </div>
+        <div class="row customs" id="faster">
+          <select class="customDo">
+            <option value="faster">Increase speed</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (0.10)" />
+        </div>
+        <div class="row customs" id="rewind">
+          <select class="customDo">
+            <option value="rewind">Rewind</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (10)" />
+        </div>
+        <div class="row customs" id="advance">
+          <select class="customDo">
+            <option value="advance">Advance</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (10)" />
+        </div>
+        <div class="row customs" id="reset">
+          <select class="customDo">
+            <option value="reset">Reset speed</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (1.00)" />
+        </div>
+        <div class="row customs" id="fast">
+          <select class="customDo">
+            <option value="fast">Preferred speed</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (1.80)" />
+        </div>
+        <div class="row customs" id="mark">
+          <select class="customDo">
+            <option value="mark">Set marker</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (0)" style="display: none" />
+        </div>
+        <div class="row customs" id="jump">
+          <select class="customDo">
+            <option value="jump">Jump to marker</option>
+          </select>
+          <input class="customKey" type="text" value="" placeholder="press a key" />
+          <input class="customValue" type="text" placeholder="value (0)" style="display: none" />
+        </div>
+        <button id="add" class="secondary add-shortcut-btn">Add shortcut</button>
+      </section>
 
-  <section>
-    <h3>Other</h3>
-    <div class="row">
-      <label for="audioBoolean">Audio support</label>
-      <input id="audioBoolean" type="checkbox" />
-    </div>
-    <div class="row">
-      <label for="rememberSpeed">Remember playback speed</label>
-      <input id="rememberSpeed" type="checkbox" />
-    </div>
-    <div class="row">
-      <label for="startHidden">Hide controller by default</label>
-      <input id="startHidden" type="checkbox" />
-    </div>
-    <div class="row">
-      <label for="forceLastSavedSpeed">Force last saved speed<br />
-        <em>Prevent video players that override VSC speed</em></label>
-      <input id="forceLastSavedSpeed" type="checkbox" />
-    </div>
-    <div class="row advanced-feature">
-      <label for="controllerOpacity">Controller opacity</label>
-      <input id="controllerOpacity" type="text" value="" />
-    </div>
-    <div class="row advanced-feature">
-      <label for="controllerButtonSize">Controller Button Size</label>
-      <input id="controllerButtonSize" type="text" value="" />
-    </div>
-    <div class="row advanced-feature">
-      <label for="logLevel">Console Log Level<br />
-        <em>Set verbosity in the browser console</em></label>
-      <select id="logLevel">
-        <option value="1">None</option>
-        <option value="2">Error</option>
-        <option value="3">Warning</option>
-        <option value="4">Info</option>
-        <option value="5">Debug</option>
-        <option value="6">Verbose</option>
-      </select>
-    </div>
-    <div class="row advanced-feature">
-      <label for="blacklist">Disable on sites<br />
-        <em>One host or <a href="https://www.regexpal.com/">Regex</a> per line. Use the literal notation, e.g.
-          <code>/(.+)youtube\.com(\/*)$/gi</code></em>
-      </label>
-      <textarea id="blacklist" rows="10" cols="50"></textarea>
-      </label>
-  </section>
+      <div class="action-bar surface-card">
+        <div class="primary-buttons">
+          <button id="save">Save changes</button>
+          <button id="experimental">Advanced settings</button>
+        </div>
+        <button id="restore">Restore defaults</button>
+      </div>
 
-  <div class="button-group">
-    <div class="primary-buttons">
-      <button id="save">Save</button>
-      <button id="experimental">Show advanced features</button>
-    </div>
-    <button id="restore">Restore defaults</button>
-  </div>
+      <section class="utility-section">
+        <p class="utility-note">
+          For local videos or Incognito, enable file URL or Incognito access in
+          <code>chrome://extensions</code>.
+        </p>
+        <div class="utility-links">
+          <button id="about" class="secondary">About</button>
+          <button id="feedback" class="secondary">Send feedback</button>
+        </div>
+      </section>
 
-  <div id="status"></div>
-
-  <section>
-    <h3>Help & Support</h3>
-    <div class="row">
-      <button id="about" class="secondary">About Video Speed Controller</button>
-      <button id="feedback" class="secondary">Send Feedback</button>
-    </div>
-    <div id="faq">
-      <h4>The speed controls are not showing up for local videos or Incognito mode?</h4>
-      <p>
-        To enable playback of local media (e.g. File &gt; Open File) or Incognito mode, you need
-        to manually grant additional permissions to the extension.
-      </p>
-      <ul>
-        <li>In a new tab, navigate to <code>chrome://extensions</code></li>
-        <li>
-          Find "Video Speed Controller" extension in the list and enable "Allow
-          access to file URLs" and/or "Allow in Incognito".
-        </li>
-      </ul>
-    </div>
-
-
-  </section>
-</body>
-
+      <div id="status" role="status" aria-live="polite"></div>
+    </main>
+  </body>
 </html>
