@@ -441,15 +441,11 @@
   }
 
   .profile-shortcuts {
-    @apply mt-0;
+    @apply mt-0 flex flex-col gap-3;
   }
 
   .profile-shortcuts-heading {
-    @apply mb-2 flex items-end justify-between gap-3;
-  }
-
-  .profile-panel-title {
-    @apply m-0 text-[14px] font-medium;
+    @apply flex items-end justify-between gap-3;
   }
 
   .profile-panel-note {
@@ -492,20 +488,56 @@
   .profile-advanced {
     display: none;
     border-color: var(--opt-line);
-    @apply border-t pt-4;
+    @apply mt-4 flex flex-col gap-4 border-t pt-4;
   }
 
   .profile-advanced.expanded,
   .profile-kb-list.expanded {
+    @apply flex;
+  }
+
+  .profile-kb-list.expanded {
     @apply block;
   }
 
+  .profile-advanced-group {
+    background: var(--opt-surface);
+    border: 1px solid var(--opt-line);
+    border-radius: var(--radius-md);
+    @apply flex flex-col gap-3 px-4 py-4;
+  }
+
+  .profile-group-title {
+    @apply m-0 text-[13px] font-medium;
+  }
+
   .profile-advanced-fields {
-    @apply pb-2;
+    @apply pb-0;
+  }
+
+  .profile-checkbox-row {
+    @apply flex flex-wrap gap-x-6 gap-y-2;
+  }
+
+  .profile-kb-col-labels {
+    color: var(--opt-muted);
+    @apply hidden text-[11px] font-medium uppercase tracking-[0.1em] md:grid md:grid-cols-[minmax(0,1.5fr)_120px_120px_40px] md:gap-2 md:px-0;
   }
 
   .profile-kb-row {
     @apply mb-2 grid gap-2 md:grid-cols-[minmax(0,1.5fr)_120px_120px_40px];
+  }
+
+  .ghost-danger {
+    background: none;
+    border-color: transparent;
+    color: var(--opt-danger);
+    @apply min-h-9 px-3 text-[12px];
+  }
+
+  .ghost-danger:hover {
+    background: color-mix(in oklab, var(--opt-danger) 8%, transparent);
+    border-color: transparent;
   }
 
   .profile-kb-empty {

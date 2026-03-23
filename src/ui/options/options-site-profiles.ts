@@ -359,7 +359,6 @@ export async function renderSiteProfileList(options: RenderSiteProfilesOptions):
           return `<label class="profile-field">
           <span class="profile-field-label">${field.label}</span>
           <input type="${field.type}" step="${field.step}" class="profile-input" data-key="${field.key}" value="${value}" placeholder="${field.placeholder}" />
-          <span class="profile-field-note">Leave blank to inherit the global value.</span>
         </label>`;
         })
         .join('');
@@ -407,32 +406,40 @@ export async function renderSiteProfileList(options: RenderSiteProfilesOptions):
           </div>
         </div>
         <div class="profile-advanced ${hasExpanded ? 'expanded' : ''}">
-          <div class="profile-fields profile-advanced-fields">
-            ${advancedFieldsHtml}
-            <label class="profile-field profile-checkbox">
-              <input type="checkbox" class="profile-cb" data-key="startHidden" ${startHiddenChecked} ${hasStartHidden ? 'data-override="true"' : ''} />
-              <span class="profile-field-label">Hide controller at start</span>
-            </label>
-            <label class="profile-field profile-checkbox">
-              <input type="checkbox" class="profile-cb" data-key="audioBoolean" ${audioBooleanChecked} ${hasAudioBoolean ? 'data-override="true"' : ''} />
-              <span class="profile-field-label">Include audio players</span>
-            </label>
-          </div>
-          <div class="profile-shortcuts">
-            <div class="profile-shortcuts-heading">
-              <div>
-                <p class="profile-panel-title">Shortcut overrides</p>
-                <p class="profile-panel-note">${shortcutSummary}</p>
-              </div>
+          <div class="profile-advanced-group">
+            <p class="profile-group-title">Appearance</p>
+            <div class="profile-fields profile-advanced-fields">
+              ${advancedFieldsHtml}
             </div>
-            <div class="profile-kb-list ${hasCustomBindings ? 'expanded' : ''}">${hasCustomBindings ? shortcutRows : '<div class="profile-kb-empty">Still using global shortcuts.</div>'}</div>
-            <div class="profile-kb-actions">
-              ${
-                hasCustomBindings
-                  ? `<button class="profile-kb-add secondary" title="Add shortcut">Add shortcut</button>
-                    <button class="profile-kb-reset secondary" title="Reset to global shortcuts">Use global shortcuts</button>`
-                  : `<button class="profile-kb-customize secondary">Customize shortcuts</button>`
-              }
+            <div class="profile-checkbox-row">
+              <label class="profile-field profile-checkbox">
+                <input type="checkbox" class="profile-cb" data-key="startHidden" ${startHiddenChecked} ${hasStartHidden ? 'data-override="true"' : ''} />
+                <span class="profile-field-label">Hide controller at start</span>
+              </label>
+              <label class="profile-field profile-checkbox">
+                <input type="checkbox" class="profile-cb" data-key="audioBoolean" ${audioBooleanChecked} ${hasAudioBoolean ? 'data-override="true"' : ''} />
+                <span class="profile-field-label">Include audio players</span>
+              </label>
+            </div>
+          </div>
+          <div class="profile-advanced-group">
+            <div class="profile-shortcuts">
+              <div class="profile-shortcuts-heading">
+                <div>
+                  <p class="profile-group-title">Shortcut overrides</p>
+                  <p class="profile-panel-note">${shortcutSummary}</p>
+                </div>
+              </div>
+              ${hasCustomBindings ? `<div class="profile-kb-col-labels"><span>Action</span><span>Key</span><span>Value</span><span></span></div>` : ''}
+              <div class="profile-kb-list ${hasCustomBindings ? 'expanded' : ''}">${hasCustomBindings ? shortcutRows : '<div class="profile-kb-empty">Still using global shortcuts.</div>'}</div>
+              <div class="profile-kb-actions">
+                ${
+                  hasCustomBindings
+                    ? `<button class="profile-kb-add secondary" title="Add shortcut">Add shortcut</button>
+                      <button class="profile-kb-reset ghost-danger" title="Reset to global shortcuts">Use global shortcuts</button>`
+                    : `<button class="profile-kb-customize secondary">Customize shortcuts</button>`
+                }
+              </div>
             </div>
           </div>
         </div>

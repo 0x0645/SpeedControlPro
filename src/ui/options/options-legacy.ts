@@ -416,11 +416,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // About and feedback button event listeners
   getElement('about').addEventListener('click', () => {
-    window.open('https://github.com/igrigorik/videospeed');
+    window.open('https://github.com/0x0645/SpeedControlPro');
   });
 
   getElement('feedback').addEventListener('click', () => {
-    window.open('https://github.com/igrigorik/videospeed/issues');
+    window.open('https://github.com/0x0645/SpeedControlPro/issues');
   });
 
   function eventCaller(event: Event, className: string, funcName: (event: Event) => void): void {
